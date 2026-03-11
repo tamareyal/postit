@@ -1,9 +1,59 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 
-function LoginPage(){
+const loginSchema = z.object({
+  identifier: z.string().min(1, "Email or Username is required"),
+  password: z.string().min(1, "Password is required"),
+  email: z.string().optional(),
+  username: z.string().optional(),
+});
+
+const signUpSchema = z.object({
+  identifier: z.string().optional(),
+  email: z.string()
+    .min(1, "Email is required")
+    .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Please enter a valid email"),
+  username: z.string().min(3, "Username must be at least 3 characters").max(20, "Username is too long"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+type FormData = {
+  identifier?: string;
+  email?: string;
+  username?: string;
+  password: string;
+};
+
+function LoginPage() {
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  // Add state to track if we are logging in or signing up
   const [isLogin, setIsLogin] = useState<boolean>(true);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<FormData>({
+    resolver: zodResolver(isLogin ? loginSchema : signUpSchema) as any,
+    mode: "onChange",
+  });
+
+  // Reset the form errors and values when switching between Login and Sign Up
+  useEffect(() => {
+    reset();
+  }, [isLogin, reset]);
+
+  const onSubmit = (data: FormData) => {
+    if (isLogin) {
+      console.log("Logging in with:", { identifier: data.identifier, password: data.password });
+      // TODO: Call backend login API here
+    } else {
+      console.log("Signing up with:", { email: data.email, username: data.username, password: data.password });
+      // TODO: Call backend register API here
+    }
+  };
 
   return (
     <div className="vh-100 d-flex flex-column bg-light font-monospace" style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -31,7 +81,6 @@ function LoginPage(){
           
           <div className="card-body p-4 p-md-5">
             <div className="text-center mb-4">
-              {/* Dynamic Header Text */}
               <h1 className="h3 fw-bold text-dark mb-1">
                 {isLogin ? "Welcome Back" : "Create an Account"}
               </h1>
@@ -40,19 +89,19 @@ function LoginPage(){
               </p>
             </div>
 
-            {/* Tabs (Changed to buttons to handle state without changing the URL hash) */}
+            {/* Tabs */}
             <div className="d-flex border-bottom mb-4">
               <button 
                 type="button"
                 onClick={() => setIsLogin(true)}
-                className={`btn flex-fill text-center pb-3 fw-bold rounded-0 ${isLogin ? 'text-primary border-bottom border-primary border-2' : 'text-muted border-bottom border-transparent border-2 transition-colors hover-text-dark'}`}
+                className={`btn flex-fill text-center pb-3 fw-bold rounded-0 ${isLogin ? 'text-primary border-bottom border-primary border-2' : 'text-muted border-bottom border-transparent border-2 hover-text-dark'}`}
               >
                 Login
               </button>
               <button 
                 type="button"
                 onClick={() => setIsLogin(false)}
-                className={`btn flex-fill text-center pb-3 fw-bold rounded-0 ${!isLogin ? 'text-primary border-bottom border-primary border-2' : 'text-muted border-bottom border-transparent border-2 transition-colors hover-text-dark'}`}
+                className={`btn flex-fill text-center pb-3 fw-bold rounded-0 ${!isLogin ? 'text-primary border-bottom border-primary border-2' : 'text-muted border-bottom border-transparent border-2 hover-text-dark'}`}
               >
                 Sign Up
               </button>
@@ -71,7 +120,6 @@ function LoginPage(){
               </button>
             </div>
 
-            {/* Divider */}
             <div className="d-flex align-items-center gap-3 mb-4">
               <hr className="flex-grow-1 text-muted m-0" />
               <span className="text-muted small text-uppercase fw-semibold" style={{ letterSpacing: '1px', fontSize: '11px' }}>or email</span>
@@ -79,54 +127,72 @@ function LoginPage(){
             </div>
 
             {/* Form */}
-            <form onSubmit={(e) => e.preventDefault()}>
+            <form onSubmit={handleSubmit(onSubmit)} noValidate>
               
-              {/* Dynamic Inputs based on mode */}
               {isLogin ? (
                 <div className="mb-3">
                   <label className="form-label text-muted small text-uppercase fw-bold ms-1" style={{ fontSize: '11px', letterSpacing: '1px' }}>Email or Username</label>
-                  <div className="input-group input-group-lg input-group-focus">
+                  <div className={`input-group input-group-lg input-group-focus ${errors.identifier ? 'is-invalid' : ''}`}>
                     <span className="input-group-text bg-white border-end-0 text-muted">
                       <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>mail</span>
                     </span>
-                    <input type="text" className="form-control border-start-0 ps-0" placeholder="name@example.com" />
+                    <input 
+                      type="text" 
+                      className={`form-control border-start-0 ps-0 ${errors.identifier ? 'is-invalid border-danger' : ''}`} 
+                      placeholder="name@example.com" 
+                      {...register("identifier")}
+                    />
                   </div>
+                  {errors.identifier && <div className="text-danger small mt-1 ms-1 fw-semibold">{errors.identifier.message}</div>}
                 </div>
               ) : (
                 <>
                   <div className="mb-3">
                     <label className="form-label text-muted small text-uppercase fw-bold ms-1" style={{ fontSize: '11px', letterSpacing: '1px' }}>Email</label>
-                    <div className="input-group input-group-lg input-group-focus">
+                    <div className={`input-group input-group-lg input-group-focus ${errors.email ? 'is-invalid' : ''}`}>
                       <span className="input-group-text bg-white border-end-0 text-muted">
                         <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>mail</span>
                       </span>
-                      <input type="email" className="form-control border-start-0 ps-0" placeholder="name@example.com" />
+                      <input 
+                        type="email" 
+                        className={`form-control border-start-0 ps-0 ${errors.email ? 'is-invalid border-danger' : ''}`} 
+                        placeholder="name@example.com" 
+                        {...register("email")}
+                      />
                     </div>
+                    {errors.email && <div className="text-danger small mt-1 ms-1 fw-semibold">{errors.email.message}</div>}
                   </div>
                   <div className="mb-3">
                     <label className="form-label text-muted small text-uppercase fw-bold ms-1" style={{ fontSize: '11px', letterSpacing: '1px' }}>Username</label>
-                    <div className="input-group input-group-lg input-group-focus">
+                    <div className={`input-group input-group-lg input-group-focus ${errors.username ? 'is-invalid' : ''}`}>
                       <span className="input-group-text bg-white border-end-0 text-muted">
                         <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>person</span>
                       </span>
-                      <input type="text" className="form-control border-start-0 ps-0" placeholder="choose a username" />
+                      <input 
+                        type="text" 
+                        className={`form-control border-start-0 ps-0 ${errors.username ? 'is-invalid border-danger' : ''}`} 
+                        placeholder="choose a username" 
+                        {...register("username")}
+                      />
                     </div>
+                    {errors.username && <div className="text-danger small mt-1 ms-1 fw-semibold">{errors.username.message}</div>}
                   </div>
                 </>
               )}
 
               <div className="mb-3">
-                <div className="input-group input-group-lg input-group-focus mt-2">
+                <div className={`input-group input-group-lg input-group-focus ${errors.password ? 'is-invalid' : ''}`}>
                   <span className="input-group-text bg-white border-end-0 text-muted">
                     <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>lock</span>
                   </span>
                   <input 
                     type={showPassword ? "text" : "password"} 
-                    className="form-control border-start-0 border-end-0 px-0" 
+                    className={`form-control border-start-0 border-end-0 px-0 ${errors.password ? 'is-invalid border-danger' : ''}`} 
                     placeholder="••••••••" 
+                    {...register("password")}
                   />
                   <button 
-                    className="btn border border-start-0 bg-white text-muted" 
+                    className={`btn border border-start-0 bg-white text-muted ${errors.password ? 'border-danger' : ''}`} 
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                   >
@@ -135,6 +201,7 @@ function LoginPage(){
                     </span>
                   </button>
                 </div>
+                {errors.password && <div className="text-danger small mt-1 ms-1 fw-semibold">{errors.password.message}</div>}
               </div>
 
               <button type="submit" className="btn btn-primary btn-lg w-100 d-flex align-items-center justify-content-center gap-2 fw-bold shadow-sm mt-4">
@@ -146,7 +213,6 @@ function LoginPage(){
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="mt-auto py-4 text-center">
         <p className="text-muted mb-0 text-uppercase fw-semibold" style={{ fontSize: '10px', letterSpacing: '1px' }}>
           © 2026 PostIt Inc. All rights reserved.
@@ -154,6 +220,6 @@ function LoginPage(){
       </footer>
     </div>
   );
-};
+}
 
 export default LoginPage;
