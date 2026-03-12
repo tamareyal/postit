@@ -24,6 +24,7 @@ export default function Header({ page = PageType.Home, userName = 'Alex Rivera',
         <Logo />
 
           {/* AI-Powered Search Bar */}
+          {page !== PageType.Profile && (
           <div className="flex-grow-1 d-flex justify-content-center" style={{ maxWidth: '448px' }}>
             <div className="position-relative w-100">
               <span
@@ -40,6 +41,7 @@ export default function Header({ page = PageType.Home, userName = 'Alex Rivera',
               />
             </div>
           </div>
+          )}
 
           {/* Logout + Right Section */}
           <nav className="d-flex align-items-center gap-2">
