@@ -1,7 +1,7 @@
 import axios from "axios"
 
-export const api = axios.create({
-  baseURL: "http://localhost:3000"
+const api = axios.create({
+  baseURL: import.meta.env.VITE_BACKEND_URL || "http://localhost:3000"
 })
 
 api.interceptors.request.use((config) => {
@@ -20,14 +20,13 @@ api.interceptors.response.use(
   async (error) => {
 
     const originalRequest = error.config
+    const refreshToken = localStorage.getItem("refreshToken")
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && refreshToken) {
 
       originalRequest._retry = true
 
-      const refreshToken = localStorage.getItem("refreshToken")
-
-      const response = await axios.post("/auth/refreshToken", {
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL || "http://localhost:3000"}/api/auth/refresh-token`, {
         refreshToken
       })
 

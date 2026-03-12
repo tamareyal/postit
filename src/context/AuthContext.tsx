@@ -10,6 +10,7 @@ type User = {
 
 type AuthContextType = {
   user: User | null;
+  isAuthChecking: boolean;
   login: (data: { userId: string; username?: string; token: string; refreshToken: string }) => void;
   logout: () => void;
 };
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
 
   // Restore tokens from localStorage if page reloads
   useEffect(() => {
@@ -32,7 +34,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .catch((err) => {
             console.error("Error fetching user info:", err);
             setUser({ id: userId, username: "Unknown" });
+        })
+        .finally(() => {
+          setIsAuthChecking(false);
         });
+    } else {
+      setIsAuthChecking(false);
     }
   }, []);
 
@@ -54,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
  
-  return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, isAuthChecking, login, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

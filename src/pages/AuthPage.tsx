@@ -8,7 +8,33 @@ import { googleLogin } from '../services/authService';
 
 function AuthPage() {
   const [isLogin, setIsLogin] = useState<boolean>(true);
-  const { login } = useAuth();
+  const { login, logout, user, isAuthChecking } = useAuth();
+
+  if (isAuthChecking) {
+    return (
+      <div className="vh-100 d-flex align-items-center justify-content-center bg-light" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="text-center">
+          <div className="spinner-border text-primary" role="status" aria-hidden="true" />
+          <p className="mt-3 text-muted mb-0">Checking session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (user) {
+    return (
+      <div className="vh-100 d-flex align-items-center justify-content-center bg-light" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="card border-0 shadow-sm p-4 text-center" style={{ maxWidth: '420px', borderRadius: '1rem' }}>
+          <h1 className="h4 fw-bold mb-2">You are already logged in</h1>
+          <p className="text-muted mb-3">Welcome back, {user.username}.</p>
+          <button type="button" className="btn btn-outline-danger" onClick={logout}>
+            Logout
+          </button>
+        </div>
+      </div>
+    );
+    // TODO: redirect to home page 
+  }
 
   return (
     <div className="vh-100 d-flex flex-column bg-light font-monospace" style={{ fontFamily: 'Inter, sans-serif' }}>
