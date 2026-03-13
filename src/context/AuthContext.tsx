@@ -6,6 +6,7 @@ import api from "../services/api";
 type User = {
   id: string;
   username: string;
+  avatar?: string;
 };
 
 type AuthContextType = {
@@ -30,7 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (token && refreshToken && userId) {
         api
       .get("/api/auth/me")
-        .then((res) => setUser({ id: userId, username: res.data.name }))
+        .then((res) => setUser({ id: userId, username: res.data.name, avatar: res.data.image }))
         .catch((err) => {
             console.error("Error fetching user info:", err);
             setUser({ id: userId, username: "Unknown" });
@@ -49,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const res = await api.get("/api/auth/me");
-      setUser({ id: res.data.id, username: res.data.name });
+      setUser({ id: res.data.id, username: res.data.name, avatar: res.data.image });
     } catch (err) {
       console.error("Failed to fetch user info after login", err);
       setUser({ id: data.userId, username: "Unknown" });

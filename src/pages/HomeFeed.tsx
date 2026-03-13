@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import type { AxiosError } from 'axios';
 import Header, { PageType } from '../components/general/header';
 import CreatePost from '../components/posts/CreatePost';
 import PostCard from '../components/posts/PostCard';
@@ -9,15 +10,17 @@ import { useAuth } from '../context/AuthContext';
 import {
   createPost,
   extractApiErrorMessage,
-  fetchPosts,
-  type ApiPost,
+  fetchPostsPage,
+  type Post,
 } from '../services/postService';
 import { deleteUploadedImage, toStaticImageUrl, uploadPostImage } from '../services/imageService';
+import { populateSenders } from '../services/userService';
+
+const PAGE_LIMIT = 10;
 
 const DEFAULT_AVATAR = 'https://lh3.googleusercontent.com/aida-public/AB6AXuDfPoFUpebbN2taTRobHHqF74CWcKDso39TvrI1cuBorcRpX-wo_G_4fJ8-nzIC1836IGOtHKqV8BNvHOn4qvGvZUqdafJZ2F4JeyMcg22UbfBRX5C187Tv8UxusqMna6WvS9vNmPvGNZDNvV3wjj3lR7NXFUjlFA4kAYqM_VCh5rKfh7Fgl4MRW0tMX5zDz0Hz1HPZhtqxJLaT5BHkFotCAGEwwL3tShxqB8NnWkzTNKK0f2Cfz3FwVO8m2Gvvyzlm1uBQfGy9PnE';
-
 const CURRENT_USER = {
-  name: 'Alex Rivera',
+  name: 'Unknown User',
   avatar: DEFAULT_AVATAR,
 };
 
@@ -40,9 +43,9 @@ const getTimeAgo = (dateString?: string) => {
   return `${days}d ago`;
 };
 
-const mapApiPostToCard = (post: ApiPost): PostCardProps => ({
-  authorName: post.sender?.name || post.sender?.username || 'Unknown',
-  authorAvatar: post.sender?.avatar || DEFAULT_AVATAR,
+const mapPostToCard = (post: Post): PostCardProps => ({
+  authorName: post.sender?.name || 'Unknown',
+  authorAvatar: toStaticImageUrl(post.sender?.image) || DEFAULT_AVATAR,
   timeAgo: getTimeAgo(post.createdAt),
   title: post.title,
   content: post.content,
@@ -53,54 +56,105 @@ const mapApiPostToCard = (post: ApiPost): PostCardProps => ({
 
 export default function HomeFeed() {
   const { user, logout } = useAuth();
+
+  // Paging and feed states
   const [posts, setPosts] = useState<PostCardProps[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [isFeedLoading, setIsFeedLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  // Post submission states
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
   const [feedError, setFeedError] = useState<string | null>(null);
+
   const bottomRef = useRef<HTMLDivElement>(null);
+  const isFetchingRef = useRef(false);
+  const seenIdsRef = useRef(new Set<string>());
 
-  useEffect(() => {
-    let isActive = true;
+  const loadPosts = useCallback(async (cursor: string | null) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
 
-    const loadPosts = async () => {
+    const isFirstPage = cursor === null;
+
+    if (isFirstPage) {
+      setIsFeedLoading(true);
       setFeedError(null);
-      try {
-        const apiPosts = await fetchPosts();
-        if (!isActive) return;
-        setPosts(apiPosts.map(mapApiPostToCard));
-      } catch (error) {
-        if (!isActive) return;
-        setFeedError(extractApiErrorMessage(error, 'Failed to load posts.'));
+      seenIdsRef.current.clear();
+    } else {
+      setIsLoadingMore(true);
+    }
+
+    try {
+      const res = await fetchPostsPage(PAGE_LIMIT, cursor);
+      const populated = await populateSenders(res.data);
+
+      const newCards = populated
+        .filter(post => !seenIdsRef.current.has(post._id))
+        .map(post => {
+          seenIdsRef.current.add(post._id);
+          return mapPostToCard(post);
+        });
+
+      if (isFirstPage) {
+        setPosts(newCards);
+      } else {
+        setPosts(prev => [...prev, ...newCards]);
+      }
+
+      setNextCursor(res.nextCursor);
+      setHasMore(res.nextCursor !== null);
+
+      isFetchingRef.current = false;
+
+      if (isFirstPage) setIsFeedLoading(false);
+      else setIsLoadingMore(false);
+    
+    } catch (err) {
+      const status = (err as AxiosError).response?.status;
+      isFetchingRef.current = false;
+
+      if (isFirstPage) setIsFeedLoading(false);
+      else setIsLoadingMore(false);
+
+      if (!isFirstPage && status === 400) {
+        // Stale cursor — reset and restart from first page
+        seenIdsRef.current.clear();
+        setNextCursor(null);
+        setHasMore(true);
+        void loadPosts(null);
+        return;
+      }
+
+      if (isFirstPage) {
+        setFeedError(extractApiErrorMessage(err, 'Failed to load posts.'));
         setPosts([]);
       }
-    };
 
-    void loadPosts();
-
-    return () => {
-      isActive = false;
-    };
+      setHasMore(false);
+    }
   }, []);
 
   useEffect(() => {
-    if (posts.length === 0) {
-      setIsLoading(false);
-      return;
-    }
+    void loadPosts(null);
+  }, [loadPosts]);
+
+  useEffect(() => {
+    if (!hasMore || posts.length === 0) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !isLoading) {
-          setIsLoading(true);
-          setTimeout(() => setIsLoading(false), 2000);
+        if (entry.isIntersecting && !isFetchingRef.current) {
+          void loadPosts(nextCursor);
         }
       },
-      { threshold: 1.0 } // 100% of the target div is visible for the callback to be executed
+      { threshold: 1.0 }
     );
     if (bottomRef.current) observer.observe(bottomRef.current);
     return () => observer.disconnect();
-  }, [isLoading, posts.length]);
+  }, [hasMore, nextCursor, loadPosts, posts.length]);
 
   const handleNewPost = async (data: { title: string; content: string; imageFile?: File }) => {
     setIsSubmitting(true);
@@ -122,8 +176,7 @@ export default function HomeFeed() {
       });
       postCreated = true;
 
-      const refreshedPosts = await fetchPosts();
-      setPosts(refreshedPosts.map(mapApiPostToCard));
+      void loadPosts(null);
     } catch (error) {
       if (uploadedPath && !postCreated) {
         const uploadedFilename = uploadedPath.split('/').pop();
@@ -145,13 +198,13 @@ export default function HomeFeed() {
       <Header
         page={PageType.Home}
         userName={user?.username || CURRENT_USER.name}
-        userAvatar={CURRENT_USER.avatar}
+        userAvatar={user?.avatar || CURRENT_USER.avatar}
         onLogout={logout}
       />
       <main className="container py-4" style={{ maxWidth: '640px' }}>
         <CreatePost
-          userAvatar={CURRENT_USER.avatar}
           userName={user?.username || CURRENT_USER.name}
+          userAvatar={user?.avatar || CURRENT_USER.avatar}
           onPost={handleNewPost}
           isSubmitting={isSubmitting}
           errorMessage={postError}
@@ -162,7 +215,13 @@ export default function HomeFeed() {
             <span className="small fw-semibold">{feedError}</span>
           </div>
         )}
-        {posts.length === 0 ? (
+        {isFeedLoading ? (
+          <div className="d-flex justify-content-center py-5">
+            <div className="spinner-border text-secondary" role="status">
+              <span className="visually-hidden">Loading posts…</span>
+            </div>
+          </div>
+        ) : posts.length === 0 ? (
           <EmptyFeed />
         ) : (
           posts.map((post, i) => (
@@ -170,7 +229,7 @@ export default function HomeFeed() {
           ))
         )}
         <div ref={bottomRef} />
-        {posts.length > 0 && isLoading && <BottomLoadingIndicator />}
+        {isLoadingMore && <BottomLoadingIndicator />}
       </main>
     </div>
   );
