@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const BASE_API = `${import.meta.env.VITE_BACKEND_URL}/api/auth` || "http://localhost:3000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+const BASE_API = `${BACKEND_URL}/api/auth`;
 
 type AuthTokens = {
   token: string;
