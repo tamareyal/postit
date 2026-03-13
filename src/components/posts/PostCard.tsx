@@ -4,6 +4,7 @@ export interface PostCardProps {
   authorName: string;
   authorAvatar?: string;
   timeAgo: string;
+  title?: string;
   content: string;
   image?: string;
   likes: number;
@@ -16,6 +17,7 @@ export default function PostCard({
   authorName,
   authorAvatar,
   timeAgo,
+  title,
   content,
   image,
   likes,
@@ -61,6 +63,7 @@ export default function PostCard({
 
       {/* Body */}
       <div className="px-3 pb-3">
+        {title && <p className="mb-2 text-dark fw-bold lh-base">{title}</p>}
         <p className="mb-0 text-dark lh-base">{content}</p>
       </div>
 

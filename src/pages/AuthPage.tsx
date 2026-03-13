@@ -1,18 +1,16 @@
 import { useState } from 'react';
 import LoginForm from '../components/auth/LoginForm';
 import SignupForm from '../components/auth/SignupForm';
-<<<<<<< HEAD
 import Logo from '../components/general/logo';
-=======
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 import { googleLogin } from '../services/authService';
+import HomeFeed from './HomeFeed';
 
->>>>>>> 0538045019eaaf86bcce9f6f73f72ca0ce572ac5
 
 function AuthPage() {
   const [isLogin, setIsLogin] = useState<boolean>(true);
-  const { login, logout, user, isAuthChecking } = useAuth();
+  const { login, user, isAuthChecking } = useAuth();
 
   if (isAuthChecking) {
     return (
@@ -26,18 +24,7 @@ function AuthPage() {
   }
 
   if (user) {
-    return (
-      <div className="vh-100 d-flex align-items-center justify-content-center bg-light" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <div className="card border-0 shadow-sm p-4 text-center" style={{ maxWidth: '420px', borderRadius: '1rem' }}>
-          <h1 className="h4 fw-bold mb-2">You are already logged in</h1>
-          <p className="text-muted mb-3">Welcome back, {user.username}.</p>
-          <button type="button" className="btn btn-outline-danger" onClick={logout}>
-            Logout
-          </button>
-        </div>
-      </div>
-    );
-    // TODO: redirect to home page 
+    return <HomeFeed />;
   }
 
   return (

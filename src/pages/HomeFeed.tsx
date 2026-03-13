@@ -2,49 +2,93 @@ import { useState, useEffect, useRef } from 'react';
 import Header, { PageType } from '../components/general/header';
 import CreatePost from '../components/posts/CreatePost';
 import PostCard from '../components/posts/PostCard';
+import EmptyFeed from '../components/posts/emptyFeed';
 import type { PostCardProps } from '../components/posts/PostCard';
 import BottomLoadingIndicator from '../components/general/BottomLoadingIndicator';
+import { useAuth } from '../context/AuthContext';
+import {
+  createPost,
+  extractApiErrorMessage,
+  fetchPosts,
+  type ApiPost,
+} from '../services/postService';
+import { deleteUploadedImage, toStaticImageUrl, uploadPostImage } from '../services/imageService';
 
-const INITIAL_POSTS: PostCardProps[] = [
-  {
-    authorName: 'Sarah Jenkins',
-    authorAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDMMsUSUux0kGmQdhW57bIlVyTGA517Hd92yeOk2p07hL_q71BavuqT_t23WVTkkycWnGJYYGI1cElgChAYyk__PHi_lwpHbg-45nLygaNR67sMIT92kktMk1AvQS3P9iWb4f9IICsUcQaCKJQ4q81b4ejtglJwNMgnYoCoD9wKBEdEJwTzKTWhQpqvJA3cdmPFWLCBhfIJHZu-oLLz1sDWGNxdTuqOUw_X1lPcvqLwtX3qYyTZj2YLODzBScwfKNmzgpIFDW31coo',
-    timeAgo: '2 hours ago',
-    content: 'Just reached the summit of Mt. Rainier! The view from up here is absolutely breathtaking. Highly recommend this trail for anyone looking for a challenge. 🏔️✨',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuALf2xcLbeLRzDGPbGw_MwYEjf7SeQcOOKudmMgq1xGFVngjOkXNkJ5LQD_iZ8TxqNA8-ghVTvAL5peFO4E_NvVtp8nTiNJuNKjPBVVFJ5fFeTxLnhCmbocwf917oKgeIx818MdmjR_pG4BqTbFzlmrXMiblUPiWd8kpuGLmPMNdc8Z0vZpAWjG5wTVWxBKw3FLhAd4uxuQQ8zhLeOoEgxSSBLMxl4fCRhjavUmFU0ldrG4wYODLtqWk-b6NW8muUmu1EAuakwpM1c',
-    likes: 1200,
-    comments: 48,
-  },
-  {
-    authorName: 'Marcus Chen',
-    authorAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBGRMdc8Qx_VvWnXKVQ-Q_LoJojtE0J7gnURzWaoe5YS4VWX7yn80DtFMufvbONKTFFPR9NLjUlw1OOd8hZWDdi5zI_taQ7Yi3hpWL_IxxNC27ioUMM1GLrUsLbVN-9ygJVXXi857mDjUP4exwSuG4B-KyZcaSpDgMK0ATisoNuqvfWqeV658oXjnpB39AndXPctmd20-MTESGdn72Qn9sJcdk4ZF6wnb452zOOVxt34Br_2j2PW2omkblC_wVBMl16HphRDYnC_4s',
-    timeAgo: '5 hours ago',
-    content: 'Started a new project today using the latest AI models. The speed of iteration is mind-blowing! Can\'t wait to share more soon. 🖥️🚀 #buildinpublic #tech',
-    likes: 856,
-    comments: 12,
-  },
-  {
-    authorName: 'Elena Rodriguez',
-    authorAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDfPoFUpebbN2taTRobHHqF74CWcKDso39TvrI1cuBorcRpX-wo_G_4fJ8-nzIC1836IGOtHKqV8BNvHOn4qvGvZUqdafJZ2F4JeyMcg22UbfBRX5C187Tv8UxusqMna6WvS9vNmPvGNZDNvV3wjj3lR7NXFUjlFA4kAYqM_VCh5rKfh7Fgl4MRW0tMX5zDz0Hz1HPZhtqxJLaT5BHkFotCAGEwwL3tShxqB8NnWkzTNKK0f2Cfz3FwVO8m2Gvvyzlm1uBQfGy9PnE',
-    timeAgo: 'Yesterday',
-    content: 'Morning coffee by the lake. Best way to start the weekend.',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBMwzJhHxVEJc43SZtdVGOBKyEJGMDcQMVp3Q1vOnxWdkIqleTaTvlXtHvupKLOlMH6Jq7AY2ZJpK9bkTdCdG7E6PZjX8vOJKBipBjx0hMfwZbqkrpU7HbObOPbDwtFUTc2c-PNzJM7wfT5WLMv_FrSPamDvPk8mH3BVjjEqBFNQYpZ7EiKwRGJj3yO0KCKVxKG4WpEj1L2RWTPgaqJMpLkifFalzJnw5PGIKXQrY9bC7aKTL8rrJmM7J1KhVSFUVD2xjvtT4rA',
-    likes: 2400,
-    comments: 156,
-  },
-];
+const DEFAULT_AVATAR = 'https://lh3.googleusercontent.com/aida-public/AB6AXuDfPoFUpebbN2taTRobHHqF74CWcKDso39TvrI1cuBorcRpX-wo_G_4fJ8-nzIC1836IGOtHKqV8BNvHOn4qvGvZUqdafJZ2F4JeyMcg22UbfBRX5C187Tv8UxusqMna6WvS9vNmPvGNZDNvV3wjj3lR7NXFUjlFA4kAYqM_VCh5rKfh7Fgl4MRW0tMX5zDz0Hz1HPZhtqxJLaT5BHkFotCAGEwwL3tShxqB8NnWkzTNKK0f2Cfz3FwVO8m2Gvvyzlm1uBQfGy9PnE';
 
 const CURRENT_USER = {
   name: 'Alex Rivera',
-  avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDfPoFUpebbN2taTRobHHqF74CWcKDso39TvrI1cuBorcRpX-wo_G_4fJ8-nzIC1836IGOtHKqV8BNvHOn4qvGvZUqdafJZ2F4JeyMcg22UbfBRX5C187Tv8UxusqMna6WvS9vNmPvGNZDNvV3wjj3lR7NXFUjlFA4kAYqM_VCh5rKfh7Fgl4MRW0tMX5zDz0Hz1HPZhtqxJLaT5BHkFotCAGEwwL3tShxqB8NnWkzTNKK0f2Cfz3FwVO8m2Gvvyzlm1uBQfGy9PnE',
+  avatar: DEFAULT_AVATAR,
 };
 
+const getTimeAgo = (dateString?: string) => {
+  if (!dateString) return 'Just now';
+
+  const createdAt = new Date(dateString);
+  if (Number.isNaN(createdAt.getTime())) return 'Just now';
+
+  const seconds = Math.floor((Date.now() - createdAt.getTime()) / 1000);
+  if (seconds < 60) return 'Just now';
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+};
+
+const mapApiPostToCard = (post: ApiPost): PostCardProps => ({
+  authorName: post.sender?.name || post.sender?.username || 'Unknown',
+  authorAvatar: post.sender?.avatar || DEFAULT_AVATAR,
+  timeAgo: getTimeAgo(post.createdAt),
+  title: post.title,
+  content: post.content,
+  image: toStaticImageUrl(post.image),
+  likes: 0,
+  comments: 0,
+});
+
 export default function HomeFeed() {
-  const [posts, setPosts] = useState<PostCardProps[]>(INITIAL_POSTS);
+  const { user, logout } = useAuth();
+  const [posts, setPosts] = useState<PostCardProps[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [postError, setPostError] = useState<string | null>(null);
+  const [feedError, setFeedError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let isActive = true;
+
+    const loadPosts = async () => {
+      setFeedError(null);
+      try {
+        const apiPosts = await fetchPosts();
+        if (!isActive) return;
+        setPosts(apiPosts.map(mapApiPostToCard));
+      } catch (error) {
+        if (!isActive) return;
+        setFeedError(extractApiErrorMessage(error, 'Failed to load posts.'));
+        setPosts([]);
+      }
+    };
+
+    void loadPosts();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (posts.length === 0) {
+      setIsLoading(false);
+      return;
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting && !isLoading) {
@@ -56,38 +100,77 @@ export default function HomeFeed() {
     );
     if (bottomRef.current) observer.observe(bottomRef.current);
     return () => observer.disconnect();
-  }, [isLoading]);
+  }, [isLoading, posts.length]);
 
-  function handleNewPost(content: string) {
-    const newPost: PostCardProps = {
-      authorName: CURRENT_USER.name,
-      authorAvatar: CURRENT_USER.avatar,
-      timeAgo: 'Just now',
-      content,
-      likes: 0,
-      comments: 0,
-    };
-    setPosts((prev) => [newPost, ...prev]);
-  }
+  const handleNewPost = async (data: { title: string; content: string; imageFile?: File }) => {
+    setIsSubmitting(true);
+    setPostError(null);
+
+    let uploadedPath: string | undefined;
+    let postCreated = false;
+
+    try {
+      if (data.imageFile) {
+        const uploadResponse = await uploadPostImage(data.imageFile);
+        uploadedPath = uploadResponse.path;
+      }
+
+      await createPost({
+        title: data.title,
+        content: data.content,
+        ...(uploadedPath ? { image: uploadedPath } : {}),
+      });
+      postCreated = true;
+
+      const refreshedPosts = await fetchPosts();
+      setPosts(refreshedPosts.map(mapApiPostToCard));
+    } catch (error) {
+      if (uploadedPath && !postCreated) {
+        const uploadedFilename = uploadedPath.split('/').pop();
+        if (uploadedFilename) {
+          try {
+            await deleteUploadedImage(uploadedFilename);
+          } catch {}
+        }
+      }
+
+      setPostError(extractApiErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-vh-100 bg-light">
       <Header
         page={PageType.Home}
-        userName={CURRENT_USER.name}
+        userName={user?.username || CURRENT_USER.name}
         userAvatar={CURRENT_USER.avatar}
+        onLogout={logout}
       />
       <main className="container py-4" style={{ maxWidth: '640px' }}>
         <CreatePost
           userAvatar={CURRENT_USER.avatar}
-          userName={CURRENT_USER.name}
+          userName={user?.username || CURRENT_USER.name}
           onPost={handleNewPost}
+          isSubmitting={isSubmitting}
+          errorMessage={postError}
         />
-        {posts.map((post, i) => (
-          <PostCard key={i} {...post} />
-        ))}
+        {feedError && (
+          <div className="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 mb-3" role="alert">
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>error</span>
+            <span className="small fw-semibold">{feedError}</span>
+          </div>
+        )}
+        {posts.length === 0 ? (
+          <EmptyFeed />
+        ) : (
+          posts.map((post, i) => (
+            <PostCard key={i} {...post} />
+          ))
+        )}
         <div ref={bottomRef} />
-        {isLoading && <BottomLoadingIndicator />}
+        {posts.length > 0 && isLoading && <BottomLoadingIndicator />}
       </main>
     </div>
   );
