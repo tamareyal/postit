@@ -3,11 +3,23 @@ import { createRoot } from 'react-dom/client'
 import 'bootstrap/dist/css/bootstrap.min.css'
 import './index.css' 
 import AuthPage from './pages/AuthPage'
-import Header from './components/general/header'
+import { GoogleOAuthProvider } from '@react-oauth/google'
+import { AuthProvider } from './context/AuthContext'
+
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined
+
+const app = (
+  <StrictMode>
+    <AuthProvider>
+      <AuthPage />
+    </AuthProvider>
+  </StrictMode>
+)
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <Header />
-    <AuthPage />
-  </StrictMode>,
+  googleClientId ? (
+    <GoogleOAuthProvider clientId={googleClientId} locale="en">{app}</GoogleOAuthProvider>
+  ) : (
+    app
+  )
 )

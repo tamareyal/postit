@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useAuth } from '../../context/AuthContext';
+import { login as loginService } from '../../services/authService';
 
 const loginSchema = z.object({
   identifier: z.string().min(1, "Email or Username is required"),
@@ -17,6 +19,13 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const { login, user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      console.log("Current user in context:", user.username);
+    }
+  }, [user]);
 
   const {
     register,
@@ -31,12 +40,24 @@ function LoginForm() {
     setIsLoading(true);
     setServerError(null);
     try {
-      console.log("Logging in with:", { identifier: data.identifier, password: data.password });
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      throw new Error("Invalid credentials. Please check your email/username and password.");
-      // TODO: Call backend login API here
-    } catch (err) {
-      setServerError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      const result = await loginService(data.identifier, data.password);
+
+      await login({
+        userId: result.userId,
+        username: result.username,
+        token: result.token,
+        refreshToken: result.refreshToken,
+      });
+
+
+      console.log('Logged in successfully', result);
+
+      // TODO: redirect to authenticated route
+
+    } catch (err: any) {
+      setServerError(
+        err.response?.data?.message || "Something went wrong. Please try again."
+  );
     } finally {
       setIsLoading(false);
     }
