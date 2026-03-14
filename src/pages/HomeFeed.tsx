@@ -69,9 +69,6 @@ export default function HomeFeed() {
     <div className="min-vh-100 bg-light">
       <Header
         page={PageType.Home}
-        userName={user?.username || CURRENT_USER.name}
-        userAvatar={user?.avatar || CURRENT_USER.avatar}
-        onLogout={logout}
       />
       <main className="container py-4" style={{ maxWidth: '640px' }}>
         <CreatePost
