@@ -37,14 +37,19 @@ export const fetchPosts = async (): Promise<Post[]> => {
 export type PostsPageResponse = {
 	data: Post[];
 	nextCursor: string | null;
+	queryHash: string;
 };
 
 export const fetchPostsPage = async (
 	limit: number,
 	cursor?: string | null,
+	queryHash?: string | null,
 ): Promise<PostsPageResponse> => {
 	const params = new URLSearchParams();
 	params.set('limit', String(limit));
+	if (queryHash) {
+		params.set('queryHash', queryHash);
+	}
 	if (cursor) {
 		params.set('lastCreatedAt', cursor);
 	}
