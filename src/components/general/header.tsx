@@ -1,4 +1,5 @@
 import Logo from './logo';
+import { useAuth } from '../../context/AuthContext';
 
 export const PageType = {
   Home: 'home',
@@ -8,13 +9,17 @@ export type PageType = typeof PageType[keyof typeof PageType];
 
 interface HeaderProps {
   page?: PageType;
-  userName?: string;
-  userAvatar?: string;
   onLogout?: () => void;
   onSettings?: () => void;
 }
 
-export default function Header({ page = PageType.Home, userName = 'Alex Rivera', userAvatar, onLogout, onSettings }: HeaderProps) {
+const DEFAULT_AVATAR = 'https://lh3.googleusercontent.com/aida-public/AB6AXuDfPoFUpebbN2taTRobHHqF74CWcKDso39TvrI1cuBorcRpX-wo_G_4fJ8-nzIC1836IGOtHKqV8BNvHOn4qvGvZUqdafJZ2F4JeyMcg22UbfBRX5C187Tv8UxusqMna6WvS9vNmPvGNZDNvV3wjj3lR7NXFUjlFA4kAYqM_VCh5rKfh7Fgl4MRW0tMX5zDz0Hz1HPZhtqxJLaT5BHkFotCAGEwwL3tShxqB8NnWkzTNKK0f2Cfz3FwVO8m2Gvvyzlm1uBQfGy9PnE';
+
+export default function Header({ page = PageType.Home, onLogout, onSettings }: HeaderProps) {
+  const { user, logout } = useAuth();
+  const userName = user?.username || 'Unknown User';
+  const userAvatar = DEFAULT_AVATAR;
+
   return (
     <header className="sticky-top border-bottom bg-white shadow-sm">
       <div className="container-xl">
@@ -50,7 +55,7 @@ export default function Header({ page = PageType.Home, userName = 'Alex Rivera',
             href="#"
             className="d-none d-sm-flex align-items-center gap-1 text-decoration-none text-secondary rounded px-2 py-2 header-logout-btn"
             style={{ fontSize: '14px', fontWeight: 500 }}
-            onClick={(e) => { e.preventDefault(); onLogout?.(); }}
+            onClick={(e) => { e.preventDefault(); onLogout ? onLogout() : logout(); }}
           >
             <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>logout</span>
             <span>Logout</span>
@@ -60,7 +65,7 @@ export default function Header({ page = PageType.Home, userName = 'Alex Rivera',
             href="#"
             className="d-flex d-sm-none align-items-center justify-content-center text-secondary text-decoration-none rounded header-logout-btn"
             style={{ width: '40px', height: '40px' }}
-            onClick={(e) => { e.preventDefault(); onLogout?.(); }}
+            onClick={(e) => { e.preventDefault(); onLogout ? onLogout() : logout(); }}
           >
             <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>logout</span>
           </a>
