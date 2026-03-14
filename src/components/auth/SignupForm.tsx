@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useAuth } from '../../context/AuthContext';
+import { registerUser } from '../../services/authService';
 
 const signUpSchema = z.object({
   email: z.string()
@@ -21,6 +23,7 @@ function SignupForm() {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const { login } = useAuth();
 
   const {
     register,
@@ -35,14 +38,23 @@ function SignupForm() {
     setIsLoading(true);
     setServerError(null);
     try {
-      console.log("Signing up with:", { email: data.email, username: data.username, password: data.password });
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      throw new Error("This email is already registered. Please log in or use a different email.");
-      // TODO: Call backend register API here
-    } catch (err) {
-      setServerError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      const result = await registerUser(data.email, data.username, data.password);
+
+      login({
+        userId: result.userId,
+        username: result.username ?? data.username,
+        token: result.token,
+        refreshToken: result.refreshToken,
+      });
+
+      console.log('Registered successfully', result);
+      // TODO: redirect user to home page
+      // navigate("/home")
+
+    } catch (err: any) {
+        setServerError(err.response?.data?.message || "Something went wrong. Please try again.");
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
   };
 

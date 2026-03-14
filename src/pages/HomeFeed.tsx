@@ -74,8 +74,6 @@ export default function HomeFeed() {
     <div className="min-vh-100 bg-light">
       <Header
         page={PageType.Home}
-        userName={CURRENT_USER.name}
-        userAvatar={CURRENT_USER.avatar}
       />
       <main className="container py-4" style={{ maxWidth: '640px' }}>
         <CreatePost
