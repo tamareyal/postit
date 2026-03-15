@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export interface PostCardProps {
+  postId?: string;
+  postImagePath?: string;
   authorName: string;
   authorAvatar?: string;
   timeAgo: string;
@@ -9,7 +11,9 @@ export interface PostCardProps {
   image?: string;
   likes: number;
   comments: number;
-  onMore?: () => void;
+  canManage?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
   onShare?: () => void;
 }
 
@@ -22,14 +26,44 @@ export default function PostCard({
   image,
   likes,
   comments,
-  onMore,
+  canManage = false,
+  onEdit,
+  onDelete,
 }: PostCardProps) {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(likes);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    function handleClickOutside(event: MouseEvent) {
+      if (!menuContainerRef.current) return;
+      if (!menuContainerRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isMenuOpen]);
 
   function handleLike() {
     setLiked((prev) => !prev);
     setLikeCount((prev) => (liked ? prev - 1 : prev + 1));
+  }
+
+  function handleEdit() {
+    setIsMenuOpen(false);
+    onEdit?.();
+  }
+
+  function handleDelete() {
+    setIsMenuOpen(false);
+    onDelete?.();
   }
 
   function formatCount(n: number) {
@@ -39,7 +73,7 @@ export default function PostCard({
   return (
     <article className="bg-white rounded-3 shadow-sm border overflow-hidden mb-3">
       {/* Header */}
-      <div className="p-3 d-flex align-items-center justify-content-between">
+      <div className="p-3 d-flex align-items-center justify-content-between position-relative">
         <div className="d-flex align-items-center gap-3">
           <img
             src={authorAvatar}
@@ -52,12 +86,38 @@ export default function PostCard({
             <p className="mb-0 text-secondary" style={{ fontSize: '12px' }}>{timeAgo}</p>
           </div>
         </div>
-        <button
-          className="btn btn-link text-secondary p-0 d-flex align-items-center"
-          onClick={onMore}
-        >
-          <span className="material-symbols-outlined">more_horiz</span>
-        </button>
+        {canManage && (
+          <div ref={menuContainerRef} className="position-relative">
+            <button
+              className="btn btn-link text-secondary p-0 d-flex align-items-center text-decoration-none"
+              onClick={() => setIsMenuOpen((prev) => !prev)}
+              aria-label="Post options"
+            >
+              <span className="material-symbols-outlined">more_vert</span>
+            </button>
+
+            {isMenuOpen && (
+              <div className="position-absolute top-100 end-0 mt-1 bg-white border rounded-3 shadow-sm p-1" style={{ minWidth: '140px', zIndex: 5 }}>
+                <button
+                  type="button"
+                  className="dropdown-item post-options-item d-flex align-items-center gap-2 rounded-2"
+                  onClick={handleEdit}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
+                  <span>Edit</span>
+                </button>
+                <button
+                  type="button"
+                  className="dropdown-item post-options-item d-flex align-items-center gap-2 rounded-2 text-danger"
+                  onClick={handleDelete}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+                  <span>Delete</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Body */}

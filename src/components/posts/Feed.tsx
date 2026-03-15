@@ -4,8 +4,10 @@ import PostCard from './PostCard';
 import type { PostCardProps } from './PostCard';
 import EmptyFeed, { type EmptyFeedProps } from './emptyFeed';
 import BottomLoadingIndicator from '../general/BottomLoadingIndicator';
-import { toStaticImageUrl } from '../../services/imageService';
+import { deleteUploadedImage, toStaticImageUrl } from '../../services/imageService';
+import { useAuth } from '../../context/AuthContext';
 import {
+	deletePost,
 	extractApiErrorMessage,
 	type Post,
 	type PostsPageResponse,
@@ -47,7 +49,9 @@ const getTimeAgo = (dateString?: string) => {
 	return `${days}d ago`;
 };
 
-const mapPostToCard = (post: Post): PostCardProps => ({
+const mapPostToCard = (post: Post, currentUserId?: string): PostCardProps => ({
+	postId: post._id,
+	postImagePath: post.image || undefined,
 	authorName: post.sender?.name || 'Unknown',
 	authorAvatar: toStaticImageUrl(post.sender?.image) || DEFAULT_AVATAR,
 	timeAgo: getTimeAgo(post.createdAt),
@@ -56,6 +60,7 @@ const mapPostToCard = (post: Post): PostCardProps => ({
 	image: toStaticImageUrl(post.image),
 	likes: 0,
 	comments: 0,
+	canManage: !!currentUserId && post.sender_id === currentUserId,
 });
 
 export default function Feed({
@@ -64,6 +69,7 @@ export default function Feed({
 	refreshTrigger = 0,
 	emptyStateProps,
 }: FeedProps) {
+	const { user } = useAuth();
 	const [posts, setPosts] = useState<PostCardProps[]>([]);
 	const [nextCursor, setNextCursor] = useState<string | null>(null);
 	const [hasMore, setHasMore] = useState(true);
@@ -119,7 +125,7 @@ export default function Feed({
 				.filter(post => !seenIdsRef.current.has(post._id))
 				.map(post => {
 					seenIdsRef.current.add(post._id);
-					return mapPostToCard(post);
+					return mapPostToCard(post, user?.id);
 				});
 
 			if (isFirstPage) {
@@ -162,7 +168,27 @@ export default function Feed({
 
 			setHasMore(false);
 		}
-	}, [fetchPage, isInvalidQueryHashError, pageLimit, resetPagingSession]);
+	}, [fetchPage, isInvalidQueryHashError, pageLimit, resetPagingSession, user?.id]);
+
+	const handleDeletePost = useCallback(async (postId: string, imagePath?: string) => {
+		setFeedError(null);
+
+		try {
+			await deletePost(postId);
+
+			const imageFilename = imagePath?.split('/').pop();
+			if (imageFilename) {
+				try {
+					await deleteUploadedImage(imageFilename);
+				} catch {
+				}
+			}
+
+			await loadPosts(null);
+		} catch (err) {
+			setFeedError(extractApiErrorMessage(err, 'Failed to delete post.'));
+		}
+	}, [loadPosts]);
 
 	useEffect(() => {
 		void loadPosts(null);
@@ -203,7 +229,11 @@ export default function Feed({
 				<EmptyFeed {...emptyStateProps} />
 			) : (
 				posts.map((post, i) => (
-					<PostCard key={i} {...post} />
+					<PostCard
+						key={post.postId || i}
+						{...post}
+						onDelete={post.postId ? () => void handleDeletePost(post.postId as string, post.postImagePath) : undefined}
+					/>
 				))
 			)}
 
