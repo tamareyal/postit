@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const res = await api.get("/api/auth/me");
-      setUser({ id: res.data.id, username: res.data.name, avatar: res.data.image });
+      setUser({ id: res.data._id, username: res.data.name, avatar: res.data.image });
     } catch (err) {
       console.error("Failed to fetch user info after login", err);
       setUser({ id: data.userId, username: "Unknown" });

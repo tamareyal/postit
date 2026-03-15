@@ -13,6 +13,7 @@ export type Post = {
 	title: string;
 	content: string;
 	image?: string | null;
+	likes?: string[];
 	sender_id?: string;
 	sender?: UserProfile;
 	createdAt: string;
@@ -55,4 +56,20 @@ export const fetchPostsPage = async (
 	}
 	const res = await api.get<PostsPageResponse>(`/api/posts/page?${params.toString()}`);
 	return res.data;
+};
+
+type ToggleLikeResponse =
+	| number
+	| { likes: number }
+	| { likeCount: number };
+
+export const togglePostLike = async (postId: string): Promise<number> => {
+	const res = await api.put<ToggleLikeResponse>(`/api/posts/${postId}/like`);
+	const payload = res.data;
+
+	if (typeof payload === 'number') return payload;
+	if ('likes' in payload) return payload.likes;
+	if ('likeCount' in payload) return payload.likeCount;
+
+	throw new Error('Unexpected like response format');
 };

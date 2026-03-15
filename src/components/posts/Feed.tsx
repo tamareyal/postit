@@ -5,10 +5,12 @@ import type { PostCardProps } from './PostCard';
 import EmptyFeed, { type EmptyFeedProps } from './emptyFeed';
 import BottomLoadingIndicator from '../general/BottomLoadingIndicator';
 import { toStaticImageUrl } from '../../services/imageService';
+import { useAuth } from '../../context/AuthContext';
 import {
 	extractApiErrorMessage,
 	type Post,
 	type PostsPageResponse,
+	togglePostLike,
 } from '../../services/postService';
 import { populateSenders } from '../../services/userService';
 
@@ -47,16 +49,22 @@ const getTimeAgo = (dateString?: string) => {
 	return `${days}d ago`;
 };
 
-const mapPostToCard = (post: Post): PostCardProps => ({
-	authorName: post.sender?.name || 'Unknown',
-	authorAvatar: toStaticImageUrl(post.sender?.image) || DEFAULT_AVATAR,
-	timeAgo: getTimeAgo(post.createdAt),
-	title: post.title,
-	content: post.content,
-	image: toStaticImageUrl(post.image),
-	likes: 0,
-	comments: 0,
-});
+const mapPostToCard = (post: Post, currentUserId?: string): PostCardProps => {
+	const likesList = Array.isArray(post.likes) ? post.likes : [];
+
+	return {
+		postId: post._id,
+		authorName: post.sender?.name || 'Unknown',
+		authorAvatar: toStaticImageUrl(post.sender?.image) || DEFAULT_AVATAR,
+		timeAgo: getTimeAgo(post.createdAt),
+		title: post.title,
+		content: post.content,
+		image: toStaticImageUrl(post.image),
+		likes: likesList.length,
+		likedByCurrentUser: !!currentUserId && likesList.includes(currentUserId),
+		comments: 0,
+	};
+};
 
 export default function Feed({
 	fetchPage,
@@ -64,6 +72,7 @@ export default function Feed({
 	refreshTrigger = 0,
 	emptyStateProps,
 }: FeedProps) {
+	const { user } = useAuth();
 	const [posts, setPosts] = useState<PostCardProps[]>([]);
 	const [nextCursor, setNextCursor] = useState<string | null>(null);
 	const [hasMore, setHasMore] = useState(true);
@@ -89,6 +98,10 @@ export default function Feed({
 
 		const message = extractApiErrorMessage(err, '').toLowerCase();
 		return message.includes('invalid queryhash');
+	}, []);
+
+	const handleToggleLike = useCallback(async (postId: string) => {
+		return togglePostLike(postId);
 	}, []);
 
 	const loadPosts = useCallback(async (cursor: string | null, hasRetriedInvalidHash = false) => {
@@ -119,7 +132,7 @@ export default function Feed({
 				.filter(post => !seenIdsRef.current.has(post._id))
 				.map(post => {
 					seenIdsRef.current.add(post._id);
-					return mapPostToCard(post);
+					return mapPostToCard(post, user?.id);
 				});
 
 			if (isFirstPage) {
@@ -162,7 +175,7 @@ export default function Feed({
 
 			setHasMore(false);
 		}
-	}, [fetchPage, isInvalidQueryHashError, pageLimit, resetPagingSession]);
+	}, [fetchPage, isInvalidQueryHashError, pageLimit, resetPagingSession, user?.id]);
 
 	useEffect(() => {
 		void loadPosts(null);
@@ -203,7 +216,7 @@ export default function Feed({
 				<EmptyFeed {...emptyStateProps} />
 			) : (
 				posts.map((post, i) => (
-					<PostCard key={i} {...post} />
+					<PostCard key={post.postId || i} {...post} onToggleLike={handleToggleLike} />
 				))
 			)}
 

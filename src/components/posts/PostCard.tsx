@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export interface PostCardProps {
+  postId?: string;
   authorName: string;
   authorAvatar?: string;
   timeAgo: string;
@@ -8,12 +9,15 @@ export interface PostCardProps {
   content: string;
   image?: string;
   likes: number;
+  likedByCurrentUser?: boolean;
   comments: number;
   onMore?: () => void;
   onShare?: () => void;
+  onToggleLike?: (postId: string) => Promise<number>;
 }
 
 export default function PostCard({
+  postId,
   authorName,
   authorAvatar,
   timeAgo,
@@ -21,15 +25,43 @@ export default function PostCard({
   content,
   image,
   likes,
+  likedByCurrentUser = false,
   comments,
   onMore,
+  onToggleLike,
 }: PostCardProps) {
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] = useState(likedByCurrentUser);
   const [likeCount, setLikeCount] = useState(likes);
+  const [isTogglingLike, setIsTogglingLike] = useState(false);
 
-  function handleLike() {
-    setLiked((prev) => !prev);
-    setLikeCount((prev) => (liked ? prev - 1 : prev + 1));
+  useEffect(() => {
+    setLiked(likedByCurrentUser);
+  }, [likedByCurrentUser]);
+
+  useEffect(() => {
+    setLikeCount(likes);
+  }, [likes]);
+
+  async function handleLike() {
+    if (!postId || !onToggleLike || isTogglingLike) return;
+
+    const previousLiked = liked;
+    const previousLikeCount = likeCount;
+    const nextLiked = !previousLiked;
+
+    setIsTogglingLike(true);
+    setLiked(nextLiked);
+    setLikeCount((prev) => (nextLiked ? prev + 1 : Math.max(prev - 1, 0)));
+
+    try {
+      const nextCount = await onToggleLike(postId);
+      setLikeCount(nextCount);
+    } catch {
+      setLiked(previousLiked);
+      setLikeCount(previousLikeCount);
+    } finally {
+      setIsTogglingLike(false);
+    }
   }
 
   function formatCount(n: number) {
@@ -82,6 +114,7 @@ export default function PostCard({
         <button
           className={`btn btn-link p-0 d-flex align-items-center gap-2 text-decoration-none ${liked ? 'text-primary' : 'text-secondary'}`}
           onClick={handleLike}
+          disabled={isTogglingLike}
         >
           <span className="material-symbols-outlined" style={{ fontVariationSettings: liked ? "'FILL' 1" : "'FILL' 0" }}>
             favorite
