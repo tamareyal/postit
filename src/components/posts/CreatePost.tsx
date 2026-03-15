@@ -1,19 +1,28 @@
 import type { ChangeEvent } from 'react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { DEFAULT_AVATAR, getUserAvatarById } from '../../services/userService';
 
 interface CreatePostProps {
-  userAvatar?: string;
-  userName?: string;
   onPost?: (data: { title: string; content: string; imageFile?: File }) => Promise<void> | void;
   isSubmitting?: boolean;
   errorMessage?: string | null;
 }
 
-export default function CreatePost({ userAvatar, userName = 'User', onPost, isSubmitting = false, errorMessage }: CreatePostProps) {
+export default function CreatePost({ onPost, isSubmitting = false, errorMessage }: CreatePostProps) {
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [selectedImage, setSelectedImage] = useState<File | undefined>();
   const [localError, setLocalError] = useState<string | null>(null);
+  const [profileAvatar, setProfileAvatar] = useState<string>(DEFAULT_AVATAR);
+
+  useEffect(() => {
+    getUserAvatarById(user?.id).then(setProfileAvatar);
+  }, [user?.id]);
+
+  const userName = user?.username || 'Unknown User';
+  const userAvatar = profileAvatar;
 
   function handleImageSelect(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];

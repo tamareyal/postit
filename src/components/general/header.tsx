@@ -1,5 +1,7 @@
 import Logo from './logo';
 import { useAuth } from '../../context/AuthContext';
+import { useEffect, useState } from 'react';
+import { DEFAULT_AVATAR, getUserAvatarById } from '../../services/userService';
 
 export const PageType = {
   Home: 'home',
@@ -13,12 +15,16 @@ interface HeaderProps {
   onSettings?: () => void;
 }
 
-const DEFAULT_AVATAR = 'https://lh3.googleusercontent.com/aida-public/AB6AXuDfPoFUpebbN2taTRobHHqF74CWcKDso39TvrI1cuBorcRpX-wo_G_4fJ8-nzIC1836IGOtHKqV8BNvHOn4qvGvZUqdafJZ2F4JeyMcg22UbfBRX5C187Tv8UxusqMna6WvS9vNmPvGNZDNvV3wjj3lR7NXFUjlFA4kAYqM_VCh5rKfh7Fgl4MRW0tMX5zDz0Hz1HPZhtqxJLaT5BHkFotCAGEwwL3tShxqB8NnWkzTNKK0f2Cfz3FwVO8m2Gvvyzlm1uBQfGy9PnE';
-
 export default function Header({ page = PageType.Home, onLogout, onSettings }: HeaderProps) {
   const { user, logout } = useAuth();
+  const [profileAvatar, setProfileAvatar] = useState<string>(DEFAULT_AVATAR);
+
+  useEffect(() => {
+    getUserAvatarById(user?.id).then(setProfileAvatar);
+  }, [user?.id]);
+
   const userName = user?.username || 'Unknown User';
-  const userAvatar = DEFAULT_AVATAR;
+  const userAvatar = profileAvatar;
 
   return (
     <header className="sticky-top border-bottom bg-white shadow-sm">
