@@ -17,7 +17,7 @@ const CURRENT_USER = {
 };
 
 export default function HomeFeed() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   // Post submission states
   const [isSubmitting, setIsSubmitting] = useState(false);
