@@ -23,7 +23,6 @@ export default function PostCard({
   likes,
   comments,
   onMore,
-  onShare,
 }: PostCardProps) {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(likes);
@@ -93,13 +92,6 @@ export default function PostCard({
         <button className="btn btn-link p-0 d-flex align-items-center gap-2 text-secondary text-decoration-none">
           <span className="material-symbols-outlined">chat_bubble</span>
           <span className="fw-semibold" style={{ fontSize: '14px' }}>{formatCount(comments)}</span>
-        </button>
-
-        <button
-          className="btn btn-link p-0 d-flex align-items-center text-secondary text-decoration-none ms-auto"
-          onClick={onShare}
-        >
-          <span className="material-symbols-outlined">share</span>
         </button>
       </div>
     </article>
