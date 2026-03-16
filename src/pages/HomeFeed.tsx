@@ -6,6 +6,7 @@ import {
   createPost,
   extractApiErrorMessage,
   fetchPostsPage,
+  searchPosts
 } from '../services/postService';
 import { deleteUploadedImage, uploadPostImage } from '../services/imageService';
 
@@ -14,10 +15,20 @@ export default function HomeFeed() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [activeSearch, setActiveSearch] = useState<string>("");
 
   const fetchPage = useCallback(async (
-    params: { limit: number; cursor: string | null; queryHash: string | null }
-  ) => fetchPostsPage(params.limit, params.cursor, params.queryHash), []);
+    params: { limit: number; cursor: string | null; queryHash: string | null; signal?: AbortSignal }
+  ) => {
+    if (activeSearch.trim()) {
+      return searchPosts(activeSearch, params.limit, params.cursor, params.queryHash, params.signal);
+    }
+    return fetchPostsPage(params.limit, params.cursor, params.queryHash, params.signal);
+  }, [activeSearch]);
+
+  const handleSearch = (query: string) => {
+    setActiveSearch(query);
+  };
 
   const handleNewPost = async (data: { title: string; content: string; imageFile?: File }) => {
     setIsSubmitting(true);
@@ -60,14 +71,26 @@ export default function HomeFeed() {
     <div className="min-vh-100 bg-light">
       <Header
         page={PageType.Home}
+        onSearch={handleSearch}
       />
       <main className="container py-4" style={{ maxWidth: '640px' }}>
-        <CreatePost
-          onPost={handleNewPost}
-          isSubmitting={isSubmitting}
-          errorMessage={postError}
-        />
-        <Feed fetchPage={fetchPage} refreshTrigger={refreshTrigger} />
+        {!activeSearch && (
+          <CreatePost
+            onPost={handleNewPost}
+            isSubmitting={isSubmitting}
+            errorMessage={postError}
+          />
+        )}
+        <Feed
+         key={activeSearch}
+         pageLimit={5}
+         fetchPage={fetchPage} 
+         refreshTrigger={refreshTrigger}
+         emptyStateProps={{
+            title: activeSearch ? "No matches found" : "Feed is empty",
+            description: activeSearch ? "Try a different search query." : "Post something to start!"
+          }}
+         />
       </main>
     </div>
   );

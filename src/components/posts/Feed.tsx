@@ -11,6 +11,7 @@ import {
 	type PostsPageResponse,
 } from '../../services/postService';
 import { populateSenders } from '../../services/userService';
+import axios from 'axios';
 
 const DEFAULT_PAGE_LIMIT = 10;
 const DEFAULT_AVATAR = 'https://lh3.googleusercontent.com/aida-public/AB6AXuDfPoFUpebbN2taTRobHHqF74CWcKDso39TvrI1cuBorcRpX-wo_G_4fJ8-nzIC1836IGOtHKqV8BNvHOn4qvGvZUqdafJZ2F4JeyMcg22UbfBRX5C187Tv8UxusqMna6WvS9vNmPvGNZDNvV3wjj3lR7NXFUjlFA4kAYqM_VCh5rKfh7Fgl4MRW0tMX5zDz0Hz1HPZhtqxJLaT5BHkFotCAGEwwL3tShxqB8NnWkzTNKK0f2Cfz3FwVO8m2Gvvyzlm1uBQfGy9PnE';
@@ -19,6 +20,7 @@ export type FeedFetchParams = {
 	limit: number;
 	cursor: string | null;
 	queryHash: string | null;
+	signal?: AbortSignal;
 };
 
 export type FeedProps = {
@@ -70,6 +72,7 @@ export default function Feed({
 	const [isFeedLoading, setIsFeedLoading] = useState(true);
 	const [isLoadingMore, setIsLoadingMore] = useState(false);
 	const [feedError, setFeedError] = useState<string | null>(null);
+	const abortControllerRef = useRef<AbortController | null>(null);
 
 	const bottomRef = useRef<HTMLDivElement>(null);
 	const isFetchingRef = useRef(false);
@@ -92,10 +95,20 @@ export default function Feed({
 	}, []);
 
 	const loadPosts = useCallback(async (cursor: string | null, hasRetriedInvalidHash = false) => {
+		const isFirstPage = cursor === null;
+        
+		if (isFirstPage) {
+			if (abortControllerRef.current) {
+				abortControllerRef.current.abort();
+			}
+			isFetchingRef.current = false;
+    	}
+
 		if (isFetchingRef.current) return;
 		isFetchingRef.current = true;
 
-		const isFirstPage = cursor === null;
+		const controller = new AbortController();
+		abortControllerRef.current = controller;
 
 		if (isFirstPage) {
 			setIsFeedLoading(true);
@@ -110,7 +123,10 @@ export default function Feed({
 				limit: pageLimit,
 				cursor,
 				queryHash: isFirstPage ? null : queryHashRef.current,
+				signal: controller.signal
 			});
+
+			console.log('Fetched posts page:', res);
 
 			const populated = await populateSenders(res.data);
 			queryHashRef.current = res.queryHash;
@@ -135,6 +151,10 @@ export default function Feed({
 			if (isFirstPage) setIsFeedLoading(false);
 			else setIsLoadingMore(false);
 		} catch (err) {
+			if (axios.isCancel(err)) {
+                console.log('Previous search request cancelled');
+                return;
+            }
 			const status = (err as AxiosError).response?.status;
 			const isInvalidHash = isInvalidQueryHashError(err);
 
@@ -166,6 +186,13 @@ export default function Feed({
 
 	useEffect(() => {
 		void loadPosts(null);
+		
+		return () => {
+			if (abortControllerRef.current) {
+				abortControllerRef.current.abort();
+			}
+			isFetchingRef.current = false; // Release the lock
+		};
 	}, [loadPosts, refreshTrigger]);
 
 	useEffect(() => {
