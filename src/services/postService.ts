@@ -17,6 +17,7 @@ export type Post = {
 	sender?: UserProfile;
 	createdAt: string;
 	updatedAt?: string;
+	commentsCount: number;
 };
 
 export const extractApiErrorMessage = (error: unknown, fallback = 'Something went wrong. Please try again.') => {
