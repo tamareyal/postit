@@ -1,6 +1,7 @@
 import type { AxiosError } from 'axios';
 import api from './api';
 import type { UserProfile } from './userService';
+import type { CursorPageResponse } from '../components/general/usePaginatedFeed';
 
 export type CreatePostPayload = {
 	title: string;
@@ -35,11 +36,7 @@ export const fetchPosts = async (): Promise<Post[]> => {
 	return res.data;
 };
 
-export type PostsPageResponse = {
-	data: Post[];
-	nextCursor: string | null;
-	queryHash: string;
-};
+export type PostsPageResponse = CursorPageResponse<Post>;
 
 export const fetchPostsPage = async (
 	limit: number,

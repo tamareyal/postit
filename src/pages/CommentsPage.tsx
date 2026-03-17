@@ -44,6 +44,7 @@ export default function CommentsPage({ postId }: CommentsPageProps) {
 			setRefreshTrigger((prev) => prev + 1);
 		} catch (error) {
 			setCommentError(extractCommentsErrorMessage(error));
+			throw error;
 		} finally {
 			setIsSubmitting(false);
 		}
