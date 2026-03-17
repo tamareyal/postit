@@ -5,6 +5,7 @@ import Feed from '../components/posts/Feed';
 import CommentsPage from './CommentsPage';
 import {
   createPost,
+  deletePost,
   extractApiErrorMessage,
   fetchPostsPage,
   searchPosts
@@ -22,6 +23,7 @@ export default function HomeFeed() {
   // Post submission states
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
+  const [feedError, setFeedError] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [activeSearch, setActiveSearch] = useState<string>("");
   const [selectedCommentsPostId, setSelectedCommentsPostId] = useState<string | null>(getCommentsPostIdFromUrl);
@@ -93,6 +95,28 @@ export default function HomeFeed() {
     }
   };
 
+  const handleDeletePost = useCallback(async (postId: string, imagePath?: string) => {
+    setFeedError(null);
+
+    try {
+      await deletePost(postId);
+
+      const imageFilename = imagePath?.split('/').pop();
+      if (imageFilename) {
+        try {
+          await deleteUploadedImage(imageFilename);
+        } catch {
+          // Silently fail on image deletion
+        }
+      }
+
+      setRefreshTrigger(prev => prev + 1);
+    } catch (err) {
+      console.error('Error deleting post:', err);
+      setFeedError(extractApiErrorMessage(err, 'Failed to delete post.'));
+    }
+  }, []);
+
   if (selectedCommentsPostId) {
     return <CommentsPage postId={selectedCommentsPostId} />;
   }
@@ -111,15 +135,22 @@ export default function HomeFeed() {
             errorMessage={postError}
           />
         )}
+        {feedError && (
+          <div className="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 mb-3" role="alert">
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>error</span>
+            <span className="small fw-semibold">{feedError}</span>
+          </div>
+        )}
         <Feed
          key={activeSearch}
-         fetchPage={fetchPage} 
+         fetchPage={fetchPage}
          refreshTrigger={refreshTrigger}
          emptyStateProps={{
             title: activeSearch ? "No matches found" : "There is no content to display",
             description: activeSearch ? "Try a different search query." : "Upload or wait for other users to post content."
           }}
          onCommentClick={handleOpenComments}
+         onDeletePost={handleDeletePost}
          />
       </main>
     </div>

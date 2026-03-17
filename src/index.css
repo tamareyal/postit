@@ -53,3 +53,8 @@ body {
 .input-group-focus .btn:focus {
   box-shadow: none !important;
 }
+
+.post-options-item:hover,
+.post-options-item:focus {
+  background-color: var(--bs-gray-300) !important;
+}

@@ -56,6 +56,9 @@ export const fetchPostsPage = async (
 	return res.data;
 };
 
+export const deletePost = async (postId: string): Promise<void> => {
+	await api.delete(`/api/posts/${postId}`);
+};
 
 export const searchPosts = async (
 	query: string,
