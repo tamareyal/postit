@@ -11,6 +11,7 @@ export interface PostCardProps {
   likes: number;
   likedByCurrentUser?: boolean;
   comments: number;
+  onCommentsClick?: (postId: string) => void;
   onMore?: () => void;
   onShare?: () => void;
   onToggleLike?: (postId: string) => Promise<number>;
@@ -27,6 +28,7 @@ export default function PostCard({
   likes,
   likedByCurrentUser = false,
   comments,
+  onCommentsClick,
   onMore,
   onToggleLike,
 }: PostCardProps) {
@@ -122,7 +124,14 @@ export default function PostCard({
           <span className="fw-semibold" style={{ fontSize: '14px' }}>{formatCount(likeCount)}</span>
         </button>
 
-        <button className="btn btn-link p-0 d-flex align-items-center gap-2 text-secondary text-decoration-none">
+        <button
+          className="btn btn-link p-0 d-flex align-items-center gap-2 text-secondary text-decoration-none"
+          onClick={() => {
+            if (postId) {
+              onCommentsClick?.(postId);
+            }
+          }}
+        >
           <span className="material-symbols-outlined">chat_bubble</span>
           <span className="fw-semibold" style={{ fontSize: '14px' }}>{formatCount(comments)}</span>
         </button>
