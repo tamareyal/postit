@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 export interface PostCardProps {
+  postId?: string;
   authorName: string;
   authorAvatar?: string;
   timeAgo: string;
@@ -9,11 +10,13 @@ export interface PostCardProps {
   image?: string;
   likes: number;
   comments: number;
+  onCommentsClick?: (postId: string) => void;
   onMore?: () => void;
   onShare?: () => void;
 }
 
 export default function PostCard({
+  postId,
   authorName,
   authorAvatar,
   timeAgo,
@@ -22,6 +25,7 @@ export default function PostCard({
   image,
   likes,
   comments,
+  onCommentsClick,
   onMore,
 }: PostCardProps) {
   const [liked, setLiked] = useState(false);
@@ -89,7 +93,14 @@ export default function PostCard({
           <span className="fw-semibold" style={{ fontSize: '14px' }}>{formatCount(likeCount)}</span>
         </button>
 
-        <button className="btn btn-link p-0 d-flex align-items-center gap-2 text-secondary text-decoration-none">
+        <button
+          className="btn btn-link p-0 d-flex align-items-center gap-2 text-secondary text-decoration-none"
+          onClick={() => {
+            if (postId) {
+              onCommentsClick?.(postId);
+            }
+          }}
+        >
           <span className="material-symbols-outlined">chat_bubble</span>
           <span className="fw-semibold" style={{ fontSize: '14px' }}>{formatCount(comments)}</span>
         </button>

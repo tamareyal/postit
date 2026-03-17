@@ -6,6 +6,7 @@ import { DEFAULT_AVATAR, getUserAvatarById } from '../../services/userService';
 export const PageType = {
   Home: 'home',
   Profile: 'profile',
+  Comments: 'comments',
 } as const;
 export type PageType = typeof PageType[keyof typeof PageType];
 
@@ -53,7 +54,7 @@ export default function Header({ page = PageType.Home, onLogout, onSettings, onS
         <Logo />
 
         {/* AI-Powered Search Bar */}
-        {page !== PageType.Profile && (
+        {page === PageType.Home && (
         <div className="flex-grow-1 d-flex justify-content-center" style={{ maxWidth: '448px' }}>
           <div className="position-relative w-100">
             <span
