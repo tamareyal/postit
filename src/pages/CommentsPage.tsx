@@ -18,13 +18,13 @@ export default function CommentsPage({ postId }: CommentsPageProps) {
 	const [refreshTrigger, setRefreshTrigger] = useState(0);
 
 	const fetchPage = useCallback(async (
-		params: { limit: number; cursor: string | null; queryHash: string | null }
+		params: { limit: number; cursor: string | null; queryHash: string | null; signal?: AbortSignal }
 	) => {
 		if (!postId) {
 			return { data: [], nextCursor: null, queryHash: '' };
 		}
 
-		return fetchCommentsPageByPostId(postId, params.limit, params.cursor, params.queryHash);
+		return fetchCommentsPageByPostId(postId, params.limit, params.cursor, params.queryHash, params.signal);
 	}, [postId]);
 
 	const handleCreateComment = async (content: string) => {

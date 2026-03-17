@@ -26,12 +26,6 @@ export type FeedProps = {
 	onCommentClick?: (postId: string) => void;
 };
 
-
-
-
-
-
-
 const mapPostToCard = (post: Post): PostCardProps => ({
     postId: post._id,
     authorName: post.sender?.name || 'Unknown',
@@ -51,6 +45,7 @@ export default function Feed({
 	emptyStateProps,
 	onCommentClick,
 }: FeedProps) {
+	
 	const getPostId = useCallback((post: Post) => post._id, []);
 
 	const mapPostsToCards = useCallback(async (pagePosts: Post[]) => {

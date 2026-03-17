@@ -42,6 +42,7 @@ export const fetchPostsPage = async (
 	limit: number,
 	cursor?: string | null,
 	queryHash?: string | null,
+	signal?: AbortSignal
 ): Promise<PostsPageResponse> => {
 	const params = new URLSearchParams();
 	params.set('limit', String(limit));
@@ -51,6 +52,27 @@ export const fetchPostsPage = async (
 	if (cursor) {
 		params.set('lastCreatedAt', cursor);
 	}
-	const res = await api.get<PostsPageResponse>(`/api/posts/page?${params.toString()}`);
+	const res = await api.get<PostsPageResponse>(`/api/posts/page?${params.toString()}`, { signal });
+	return res.data;
+};
+
+
+export const searchPosts = async (
+	query: string,
+	limit: number,
+	cursor?: string | null,
+	queryHash?: string | null,
+	signal?: AbortSignal
+): Promise<PostsPageResponse> => {
+	const params = new URLSearchParams();
+	params.set('limit', String(limit));
+	if (queryHash) {
+		params.set('queryHash', queryHash);
+	}
+	if (cursor) {
+		params.set('lastCreatedAt', cursor);
+	}
+	const res = await api.post<PostsPageResponse>(`/api/posts/search?${params.toString()}`,
+		{ query }, { signal });
 	return res.data;
 };
