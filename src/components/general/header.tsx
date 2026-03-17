@@ -6,6 +6,7 @@ import { DEFAULT_AVATAR, getUserAvatarById } from '../../services/userService';
 export const PageType = {
   Home: 'home',
   Profile: 'profile',
+  Comments: 'comments',
 } as const;
 export type PageType = typeof PageType[keyof typeof PageType];
 
@@ -13,11 +14,29 @@ interface HeaderProps {
   page?: PageType;
   onLogout?: () => void;
   onSettings?: () => void;
+  onSearch?: (query: string) => void;
+  searchLoading?: boolean;
 }
 
-export default function Header({ page = PageType.Home, onLogout, onSettings }: HeaderProps) {
+export default function Header({ page = PageType.Home, onLogout, onSettings, onSearch }: HeaderProps) {
   const { user, logout } = useAuth();
   const [profileAvatar, setProfileAvatar] = useState<string>(DEFAULT_AVATAR);
+  const [searchValue, setSearchValue] = useState("");
+
+  const handleSearchTrigger = (val: string) => {
+    onSearch?.(val.trim());
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearchTrigger(searchValue);
+    }
+  };
+
+  const handleClear = () => {
+    setSearchValue("");
+    handleSearchTrigger(""); // Trigger empty search to return to main feed
+  };
 
   useEffect(() => {
     getUserAvatarById(user?.id).then(setProfileAvatar);
@@ -35,7 +54,7 @@ export default function Header({ page = PageType.Home, onLogout, onSettings }: H
         <Logo />
 
         {/* AI-Powered Search Bar */}
-        {page !== PageType.Profile && (
+        {page === PageType.Home && (
         <div className="flex-grow-1 d-flex justify-content-center" style={{ maxWidth: '448px' }}>
           <div className="position-relative w-100">
             <span
@@ -49,7 +68,21 @@ export default function Header({ page = PageType.Home, onLogout, onSettings }: H
               className="form-control rounded-pill bg-light border-0"
               placeholder="Ask AI to find posts, people or trends..."
               style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
+              value={searchValue}
+              onChange={e => setSearchValue(e.target.value)}
+              onKeyDown={handleKeyDown}
             />
+
+            {/* Clear Button (X) */}
+            {searchValue && (
+              <button
+                onClick={handleClear}
+                className="btn btn-link position-absolute top-50 translate-middle-y p-0 d-flex align-items-center text-secondary border-0"
+                style={{ right: '12px', zIndex: 2, textDecoration: 'none' }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>close</span>
+              </button>
+            )}
           </div>
         </div>
         )}
