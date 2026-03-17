@@ -87,19 +87,18 @@ export function usePaginatedFeed<TItem, TMapped = TItem>({
 	}, [isInvalidQueryHashError, resolveErrorMessage]);
 
 	const loadPage = useCallback(async (cursor: string | null, hasRetriedInvalidHash = false) => {
-		console.log(`Loading page with cursor: ${cursor}, hasRetriedInvalidHash: ${hasRetriedInvalidHash}`);
 		const isFirstPage = cursor === null;
         
 		if (isFirstPage) {
-			if (abortControllerRef.current) {
-				abortControllerRef.current.abort();
-			}
 			isFetchingRef.current = false;
     	}
 		
 		if (isFetchingRef.current) return;
 		isFetchingRef.current = true;
 
+		// Cancel any previous in flight requests and make this request the current one
+		console.log('Aborting previous in flight requests');
+		abortControllerRef.current?.abort();
 		const controller = new AbortController();
 		abortControllerRef.current = controller;
 
@@ -120,7 +119,8 @@ export function usePaginatedFeed<TItem, TMapped = TItem>({
 				signal: controller.signal
 			});
 
-			if (controller.signal.aborted) return;
+			// Ignore results from aborted requests
+			if (abortControllerRef.current !== controller || controller.signal.aborted) return;
 
 			queryHashRef.current = res.queryHash;
 
@@ -133,6 +133,8 @@ export function usePaginatedFeed<TItem, TMapped = TItem>({
 
 			const mappedItems = await mapItems(uniqueItems);
 
+			if (abortControllerRef.current !== controller || controller.signal.aborted) return;
+
 			if (isFirstPage) {
 				setItems(mappedItems);
 			} else {
@@ -142,10 +144,14 @@ export function usePaginatedFeed<TItem, TMapped = TItem>({
 			setNextCursor(res.nextCursor);
 			setHasMore(res.nextCursor !== null);
 		} catch (err) {
-			if (axios.isCancel(err) || controller.signal.aborted) {
-                console.log('Previous search request cancelled');
-                return;
-            }
+			if (
+				abortControllerRef.current !== controller ||
+				controller.signal.aborted ||
+				axios.isCancel(err) ||
+				(err as { code?: string } | null)?.code === 'ERR_CANCELED'
+			) {
+				return;
+			}
 			const status = (err as AxiosError).response?.status;
 			const invalidHash = isInvalidHash(err);
 
@@ -173,11 +179,13 @@ export function usePaginatedFeed<TItem, TMapped = TItem>({
 
 			setHasMore(false);
 		} finally {
-			if (!controller.signal.aborted) {
+			// Only the latest request should change thefetching state.
+			if (abortControllerRef.current === controller) {
+				abortControllerRef.current = null;
 				isFetchingRef.current = false;
 				setIsInitialLoading(false);
 				setIsLoadingMore(false);
-			}	
+			}
 		}
 	}, [fetchPage, getItemId, isInvalidHash, mapItems, pageLimit, resetPagingSession, resolveErrorMessage]);
 
