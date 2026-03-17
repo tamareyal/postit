@@ -97,6 +97,7 @@ export default function Feed({
 	const loadPosts = useCallback(async (cursor: string | null, hasRetriedInvalidHash = false) => {
 		const isFirstPage = cursor === null;
         
+		// Cleanup of previous flight
 		if (isFirstPage) {
 			if (abortControllerRef.current) {
 				abortControllerRef.current.abort();
@@ -104,12 +105,16 @@ export default function Feed({
 			isFetchingRef.current = false;
     	}
 
+		// Prevent concurrent loads
 		if (isFetchingRef.current) return;
 		isFetchingRef.current = true;
 
+		// setup new controller
 		const controller = new AbortController();
 		abortControllerRef.current = controller;
 
+
+		// UI state management
 		if (isFirstPage) {
 			setIsFeedLoading(true);
 			setFeedError(null);
