@@ -83,12 +83,11 @@ export default function HomeFeed() {
         )}
         <Feed
          key={activeSearch}
-         pageLimit={5}
          fetchPage={fetchPage} 
          refreshTrigger={refreshTrigger}
          emptyStateProps={{
-            title: activeSearch ? "No matches found" : "Feed is empty",
-            description: activeSearch ? "Try a different search query." : "Post something to start!"
+            title: activeSearch ? "No matches found" : "There is no content to display",
+            description: activeSearch ? "Try a different search query." : "Upload or wait for other users to post content."
           }}
          />
       </main>

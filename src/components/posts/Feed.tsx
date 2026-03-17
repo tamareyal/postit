@@ -191,7 +191,7 @@ export default function Feed({
 			if (abortControllerRef.current) {
 				abortControllerRef.current.abort();
 			}
-			isFetchingRef.current = false; // Release the lock
+			isFetchingRef.current = false;
 		};
 	}, [loadPosts, refreshTrigger]);
 
