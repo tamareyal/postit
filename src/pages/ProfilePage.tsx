@@ -18,9 +18,21 @@ interface ProfilePageProps {
   onBack?: () => void;
   onLogoClick?: () => void;
   onCommentsClick?: (postId: string) => void;
+  onDeletePost?: (postId: string, imagePath?: string) => void;
+  onEditPost?: (postId: string, data: { title: string; content: string; imageFile?: File; removeImage?: boolean; originalImage?: string }) => void;
+  onToggleLike?: (postId: string) => Promise<number>;
+  refreshTrigger?: number;
 }
 
-export default function ProfileFeed({ onBack, onLogoClick, onCommentsClick }: ProfilePageProps) {
+export default function ProfileFeed({
+  onBack,
+  onLogoClick,
+  onCommentsClick,
+  onDeletePost,
+  onEditPost,
+  onToggleLike,
+  refreshTrigger = 0,
+}: ProfilePageProps) {
   const { user, updateUser } = useAuth();
   const [profileAvatar, setProfileAvatar] = useState<string>(DEFAULT_AVATAR);
   const [displayName, setDisplayName] = useState(user?.username ?? '');
@@ -32,7 +44,7 @@ export default function ProfileFeed({ onBack, onLogoClick, onCommentsClick }: Pr
   const [localError, setLocalError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [postsCount, setPostsCount] = useState<number | null>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [profileRefreshTrigger, setProfileRefreshTrigger] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const originalAvatarRef = useRef<string | null>(null);
 
@@ -127,7 +139,7 @@ export default function ProfileFeed({ onBack, onLogoClick, onCommentsClick }: Pr
       });
       if (imagePath) setProfileAvatar(imagePath);
       if (removeAvatar) setProfileAvatar(DEFAULT_AVATAR);
-      setRefreshTrigger((prev) => prev + 1);
+      setProfileRefreshTrigger((prev) => prev + 1);
       setAvatarFile(null);
       setAvatarPreview(null);
       setRemoveAvatar(false);
@@ -329,8 +341,11 @@ export default function ProfileFeed({ onBack, onLogoClick, onCommentsClick }: Pr
         <div className="mt-5">
           <Feed
             fetchPage={fetchPage}
-            refreshTrigger={refreshTrigger}
+            refreshTrigger={refreshTrigger + profileRefreshTrigger}
             onCommentClick={onCommentsClick}
+            onDeletePost={onDeletePost}
+            onEditPost={onEditPost}
+            onToggleLike={onToggleLike}
           />
         </div>
       </main>
