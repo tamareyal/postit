@@ -3,6 +3,7 @@ import Header, { PageType } from '../components/general/header';
 import CreatePost from '../components/posts/CreatePost';
 import Feed from '../components/posts/Feed';
 import CommentsPage from './CommentsPage';
+import ProfilePage from './ProfilePage';
 import {
   createPost,
   deletePost,
@@ -14,24 +15,55 @@ import {
 import { deleteUploadedImage, uploadPostImage } from '../services/imageService';
 
 const COMMENTS_POST_ID_PARAM = 'commentsPostId';
+const PROFILE_PATH = '/profile';
 
-const getCommentsPostIdFromUrl = () => {
+type RouteView = 'home' | 'profile' | 'comments';
+
+/** Derives the current view and optional comments post id from the URL (pathname + search). */
+function getRouteFromUrl(): { view: RouteView; commentsPostId: string | null } {
+  const pathname = window.location.pathname;
   const params = new URLSearchParams(window.location.search);
-  return params.get(COMMENTS_POST_ID_PARAM);
-};
+  const commentsPostId = params.get(COMMENTS_POST_ID_PARAM);
+
+  if (commentsPostId) return { view: 'comments', commentsPostId };
+  if (pathname === PROFILE_PATH) return { view: 'profile', commentsPostId: null };
+  return { view: 'home', commentsPostId: null };
+}
+
+function getInitialRoute() {
+  return getRouteFromUrl();
+}
 
 export default function HomeFeed() {
-  // Post submission states
+  const initial = getInitialRoute();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
   const [feedError, setFeedError] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [activeSearch, setActiveSearch] = useState<string>("");
-  const [selectedCommentsPostId, setSelectedCommentsPostId] = useState<string | null>(getCommentsPostIdFromUrl);
+
+  const [selectedCommentsPostId, setSelectedCommentsPostId] = useState<string | null>(
+    initial.view === 'comments' ? initial.commentsPostId : null
+  );
+  const [showProfile, setShowProfile] = useState(initial.view === 'profile');
+
+  const goHome = useCallback(() => {
+    setShowProfile(false);
+    setSelectedCommentsPostId(null);
+    window.history.pushState({}, '', '/');
+  }, []);
+
+  const goToProfile = useCallback(() => {
+    setSelectedCommentsPostId(null);
+    setShowProfile(true);
+    window.history.pushState({}, '', PROFILE_PATH);
+  }, []);
 
   useEffect(() => {
     const handlePopState = () => {
-      setSelectedCommentsPostId(getCommentsPostIdFromUrl());
+      const route = getRouteFromUrl();
+      setSelectedCommentsPostId(route.view === 'comments' ? route.commentsPostId : null);
+      setShowProfile(route.view === 'profile');
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -54,7 +86,8 @@ export default function HomeFeed() {
   const handleOpenComments = useCallback((postId: string) => {
     const params = new URLSearchParams(window.location.search);
     params.set(COMMENTS_POST_ID_PARAM, postId);
-    const nextUrl = `${window.location.pathname}?${params.toString()}`;
+    const path = window.location.pathname;
+    const nextUrl = params.toString() ? `${path}?${params.toString()}` : path;
     window.history.pushState({}, '', nextUrl);
     setSelectedCommentsPostId(postId);
   }, []);
@@ -169,13 +202,31 @@ export default function HomeFeed() {
   );
 
   if (selectedCommentsPostId) {
-    return <CommentsPage postId={selectedCommentsPostId} />;
+    return (
+      <CommentsPage
+        postId={selectedCommentsPostId}
+        onGoHome={goHome}
+        onGoToProfile={goToProfile}
+      />
+    );
+  }
+
+  if (showProfile) {
+    return (
+      <ProfilePage
+        onBack={goHome}
+        onLogoClick={goHome}
+        onCommentsClick={handleOpenComments}
+      />
+    );
   }
 
   return (
     <div className="min-vh-100 bg-light">
       <Header
         page={PageType.Home}
+        onSettings={goToProfile}
+        onLogoClick={goHome}
         onSearch={handleSearch}
       />
       <main className="container py-4" style={{ maxWidth: '640px' }}>

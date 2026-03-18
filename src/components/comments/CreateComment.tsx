@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { DEFAULT_AVATAR, getUserAvatarById } from '../../services/userService';
+import { toStaticImageUrl } from '../../services/imageService';
 
 interface CreateCommentProps {
 	onPost?: (content: string) => Promise<void> | void;
@@ -20,6 +21,9 @@ export default function CreateComment({ onPost, isSubmitting = false, errorMessa
 	}, [user?.id]);
 
 	const userName = user?.username || 'Unknown User';
+	const userAvatar = user?.avatar ?? profileAvatar;
+	const userAvatarUrl = toStaticImageUrl(userAvatar) || userAvatar;
+  
 
 	async function handlePostComment() {
 		setLocalError(null);
@@ -41,7 +45,7 @@ export default function CreateComment({ onPost, isSubmitting = false, errorMessa
 		<div className="bg-white rounded-3 shadow-sm border p-3 mb-3">
 			<div className="d-flex gap-3">
 				<img
-					src={profileAvatar}
+					src={userAvatarUrl}
 					alt={`${userName} avatar`}
 					className="rounded-circle object-fit-cover flex-shrink-0"
 					style={{ width: '36px', height: '36px' }}

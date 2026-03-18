@@ -14,6 +14,7 @@ type AuthContextType = {
   isAuthChecking: boolean;
   login: (data: { userId: string; username?: string; token: string; refreshToken: string }) => void;
   logout: () => void;
+  updateUser: (updates: Partial<Pick<User, 'username' | 'avatar'>>) => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -60,9 +61,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     clearAuthTokens(); // removes tokens from localStorage
     setUser(null);
+    window.location.replace("/");
   };
- 
-  return <AuthContext.Provider value={{ user, isAuthChecking, login, logout }}>{children}</AuthContext.Provider>;
+
+  const updateUser = (updates: Partial<Pick<User, 'username' | 'avatar'>>) => {
+    setUser((prev) => (prev ? { ...prev, ...updates } : null));
+  };
+
+  return <AuthContext.Provider value={{ user, isAuthChecking, login, logout, updateUser }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

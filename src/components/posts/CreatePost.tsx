@@ -2,6 +2,7 @@ import type { ChangeEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { DEFAULT_AVATAR, getUserAvatarById } from '../../services/userService';
+import { toStaticImageUrl } from '../../services/imageService';
 
 interface CreatePostProps {
   onPost?: (data: { title: string; content: string; imageFile?: File }) => Promise<void> | void;
@@ -22,7 +23,9 @@ export default function CreatePost({ onPost, isSubmitting = false, errorMessage 
   }, [user?.id]);
 
   const userName = user?.username || 'Unknown User';
-  const userAvatar = profileAvatar;
+  // Treat empty-string as "unset" and fall back.
+  const userAvatar = user?.avatar && user.avatar.trim() ? user.avatar : profileAvatar;
+  const userAvatarUrl = toStaticImageUrl(userAvatar) || userAvatar;
 
   function handleImageSelect(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -54,7 +57,7 @@ export default function CreatePost({ onPost, isSubmitting = false, errorMessage 
         <div className="d-flex gap-3">
           {/* Avatar */}
           <img
-            src={userAvatar}
+            src={userAvatarUrl}
             alt={`${userName} avatar`}
             className="rounded-circle object-fit-cover flex-shrink-0"
             style={{ width: '40px', height: '40px' }}

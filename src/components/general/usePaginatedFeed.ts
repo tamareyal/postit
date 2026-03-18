@@ -97,7 +97,6 @@ export function usePaginatedFeed<TItem, TMapped = TItem>({
 		isFetchingRef.current = true;
 
 		// Cancel any previous in flight requests and make this request the current one
-		console.log('Aborting previous in flight requests');
 		abortControllerRef.current?.abort();
 		const controller = new AbortController();
 		abortControllerRef.current = controller;

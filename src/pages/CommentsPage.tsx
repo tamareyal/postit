@@ -10,9 +10,11 @@ import {
 
 interface CommentsPageProps {
 	postId?: string;
+	onGoHome?: () => void;
+	onGoToProfile?: () => void;
 }
 
-export default function CommentsPage({ postId }: CommentsPageProps) {
+export default function CommentsPage({ postId, onGoHome, onGoToProfile }: CommentsPageProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [commentError, setCommentError] = useState<string | null>(null);
 	const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -52,7 +54,11 @@ export default function CommentsPage({ postId }: CommentsPageProps) {
 
 	return (
 		<div className="min-vh-100 bg-light">
-			<Header page={PageType.Comments} />
+			<Header
+			page={PageType.Comments}
+			onLogoClick={onGoHome}
+			onSettings={onGoToProfile}
+		/>
 
 			<main className="container py-4" style={{ maxWidth: '640px' }}>
 				<CreateComment

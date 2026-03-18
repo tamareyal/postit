@@ -39,6 +39,15 @@ export const getUserAvatarById = async (userId?: string): Promise<string> => {
 	}
 };
 
+export const updateUserProfile = async (
+	id: string,
+	updates: { name?: string; image?: string | null },
+): Promise<UserProfile> => {
+	const res = await api.put<UserProfile>(`/api/users/${id}`, updates);
+	userCache.delete(id);
+	return res.data;
+};
+
 export const populateSenders = async (posts: Post[]): Promise<Post[]> => {
 	const uniqueIds = [
 		...new Set(posts.map(p => p.sender_id).filter((id): id is string => !!id)),
