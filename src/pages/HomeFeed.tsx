@@ -39,7 +39,8 @@ export default function HomeFeed() {
   const [postError, setPostError] = useState<string | null>(null);
   const [feedError, setFeedError] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-<<<<<<< HEAD
+  const [activeSearch, setActiveSearch] = useState<string>("");
+
   const [selectedCommentsPostId, setSelectedCommentsPostId] = useState<string | null>(
     initial.view === 'comments' ? initial.commentsPostId : null
   );
@@ -56,10 +57,6 @@ export default function HomeFeed() {
     setShowProfile(true);
     window.history.pushState({}, '', PROFILE_PATH);
   }, []);
-=======
-  const [activeSearch, setActiveSearch] = useState<string>("");
-  const [selectedCommentsPostId, setSelectedCommentsPostId] = useState<string | null>(getCommentsPostIdFromUrl);
->>>>>>> 16463c3e86506c7ade58d6957cbe2e92fbf96ad7
 
   useEffect(() => {
     const handlePopState = () => {
@@ -177,12 +174,9 @@ export default function HomeFeed() {
     <div className="min-vh-100 bg-light">
       <Header
         page={PageType.Home}
-<<<<<<< HEAD
         onSettings={goToProfile}
         onLogoClick={goHome}
-=======
         onSearch={handleSearch}
->>>>>>> 16463c3e86506c7ade58d6957cbe2e92fbf96ad7
       />
       <main className="container py-4" style={{ maxWidth: '640px' }}>
         {!activeSearch && (
