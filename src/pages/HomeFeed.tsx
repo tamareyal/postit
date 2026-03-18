@@ -9,7 +9,8 @@ import {
   deletePost,
   extractApiErrorMessage,
   fetchPostsPage,
-  searchPosts
+  searchPosts,
+  updatePost,
 } from '../services/postService';
 import { deleteUploadedImage, uploadPostImage } from '../services/imageService';
 
@@ -150,6 +151,56 @@ export default function HomeFeed() {
     }
   }, []);
 
+  const handleEditPost = useCallback(
+    async (
+      postId: string,
+      editData: { title: string; content: string; imageFile?: File; removeImage?: boolean; originalImage?: string }
+    ) => {
+      setFeedError(null);
+
+      try {
+        const { title, content, imageFile, removeImage, originalImage } = editData;
+        let finalImagePath: string | undefined;
+
+        if (imageFile) {
+          const uploadResponse = await uploadPostImage(imageFile);
+          finalImagePath = uploadResponse.path;
+        }
+
+        if (originalImage) {
+          const originalImageFilename = originalImage.split('/').pop();
+          const shouldDeleteOriginal = Boolean(originalImageFilename && (imageFile || removeImage));
+
+          if (shouldDeleteOriginal && originalImageFilename) {
+            try {
+              await deleteUploadedImage(originalImageFilename);
+            } catch {
+              // Silently fail on image deletion
+            }
+          }
+        }
+
+        const imagePayload = imageFile
+          ? { image: finalImagePath }
+          : removeImage
+            ? { image: '' }
+            : {};
+
+        await updatePost(postId, {
+          title,
+          content,
+          ...imagePayload,
+        });
+
+        setRefreshTrigger(prev => prev + 1);
+      } catch (err) {
+        console.error('Error editing post:', err);
+        setFeedError(extractApiErrorMessage(err, 'Failed to update post.'));
+      }
+    },
+    []
+  );
+
   if (selectedCommentsPostId) {
     return (
       <CommentsPage
@@ -202,6 +253,7 @@ export default function HomeFeed() {
           }}
          onCommentClick={handleOpenComments}
          onDeletePost={handleDeletePost}
+         onEditPost={handleEditPost}
          />
       </main>
     </div>

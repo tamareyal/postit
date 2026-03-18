@@ -13,7 +13,7 @@ export interface PostCardProps {
   likes: number;
   comments: number;
   canManage?: boolean;
-  onEdit?: () => void;
+  onEdit?: (data: { title: string; content: string; imageFile?: File; removeImage?: boolean; originalImage?: string }) => void;
   onDelete?: () => void;
   onCommentsClick?: (postId: string) => void;
   onMore?: () => void;
@@ -38,7 +38,15 @@ export default function PostCard({
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(likes);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editTitle, setEditTitle] = useState(title || '');
+  const [editContent, setEditContent] = useState(content);
+  const [editImageFile, setEditImageFile] = useState<File | undefined>();
+  const [editImagePreview, setEditImagePreview] = useState<string | undefined>(image);
+  const [removeImage, setRemoveImage] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
   const menuContainerRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -63,7 +71,52 @@ export default function PostCard({
 
   function handleEdit() {
     setIsMenuOpen(false);
-    onEdit?.();
+    setIsEditMode(true);
+    setEditImageFile(undefined);
+    setEditImagePreview(image);
+    setRemoveImage(false);
+    setLocalError(null);
+  }
+
+  function handleUpdate() {
+    setLocalError(null);
+
+    const trimmedTitle = editTitle.trim();
+    const trimmedContent = editContent.trim();
+
+    if (!trimmedTitle || !trimmedContent) {
+      setLocalError('Title and content are required.');
+      return;
+    }
+
+    setIsEditMode(false);
+    onEdit?.({
+      title: trimmedTitle,
+      content: trimmedContent,
+      imageFile: editImageFile,
+      removeImage,
+      originalImage: image,
+    });
+  }
+
+  function handleCancel() {
+    setIsEditMode(false);
+    setEditTitle(title || '');
+    setEditContent(content);
+    setEditImageFile(undefined);
+    setEditImagePreview(image);
+    setRemoveImage(false);
+    setLocalError(null);
+  }
+
+  function handleImageSelect(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (file) {
+      setEditImageFile(file);
+      const previewUrl = URL.createObjectURL(file);
+      setEditImagePreview(previewUrl);
+      setRemoveImage(false);
+    }
   }
 
   function handleDelete() {
@@ -127,15 +180,100 @@ export default function PostCard({
 
       {/* Body */}
       <div className="px-3 pb-3">
-        {title && <p className="mb-2 text-dark fw-bold lh-base">{title}</p>}
-        <p className="mb-0 text-dark lh-base">{content}</p>
+        {isEditMode ? (
+          <>
+            <input
+              type="text"
+              className="form-control mb-2"
+              placeholder="Post title"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+            />
+            <textarea
+              className="form-control mb-2"
+              placeholder="What's on your mind?"
+              rows={4}
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+            />
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageSelect}
+              style={{ display: 'none' }}
+            />
+            <div className="d-flex gap-2 mb-2">
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() => imageInputRef.current?.click()}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '18px', marginRight: '4px' }}>image</span>
+                Change Image
+              </button>
+              {editImagePreview && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-danger"
+                  onClick={() => {
+                    setEditImageFile(undefined);
+                    setEditImagePreview(undefined);
+                    setRemoveImage(true);
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px', marginRight: '4px' }}>delete</span>
+                  Remove Image
+                </button>
+              )}
+            </div>
+            {editImagePreview && (
+              <div className="mb-2 position-relative d-inline-block">
+                <img
+                  src={editImagePreview}
+                  alt="Preview"
+                  style={{ maxWidth: '100%', height: 'auto', maxHeight: '200px' }}
+                />
+              </div>
+            )}
+
+            {localError && (
+              <div className="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 mb-2" role="alert">
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>error</span>
+                <span className="small fw-semibold">{localError}</span>
+              </div>
+            )}
+
+            <div className="d-flex gap-2 mt-2">
+              <button
+                type="button"
+                className="btn btn-sm btn-primary"
+                onClick={handleUpdate}
+              >
+                Update
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-secondary"
+                onClick={handleCancel}
+              >
+                Cancel
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {editTitle && <p className="mb-2 text-dark fw-bold lh-base">{editTitle}</p>}
+            <p className="mb-0 text-dark lh-base">{editContent}</p>
+          </>
+        )}
       </div>
 
       {/* Image */}
-      {image && (
+      {!isEditMode && editImagePreview && (
         <div className="w-100 bg-light" style={{ aspectRatio: '16/9' }}>
           <img
-            src={image}
+            src={editImagePreview}
             alt="Post media"
             className="w-100 h-100 object-fit-cover"
           />
@@ -143,29 +281,31 @@ export default function PostCard({
       )}
 
       {/* Actions */}
-      <div className="px-3 py-2 border-top d-flex align-items-center gap-4">
-        <button
-          className={`btn btn-link p-0 d-flex align-items-center gap-2 text-decoration-none ${liked ? 'text-primary' : 'text-secondary'}`}
-          onClick={handleLike}
-        >
-          <span className="material-symbols-outlined" style={{ fontVariationSettings: liked ? "'FILL' 1" : "'FILL' 0" }}>
-            favorite
-          </span>
-          <span className="fw-semibold" style={{ fontSize: '14px' }}>{formatCount(likeCount)}</span>
-        </button>
+      {!isEditMode && (
+        <div className="px-3 py-2 border-top d-flex align-items-center gap-4">
+          <button
+            className={`btn btn-link p-0 d-flex align-items-center gap-2 text-decoration-none ${liked ? 'text-primary' : 'text-secondary'}`}
+            onClick={handleLike}
+          >
+            <span className="material-symbols-outlined" style={{ fontVariationSettings: liked ? "'FILL' 1" : "'FILL' 0" }}>
+              favorite
+            </span>
+            <span className="fw-semibold" style={{ fontSize: '14px' }}>{formatCount(likeCount)}</span>
+          </button>
 
-        <button
-          className="btn btn-link p-0 d-flex align-items-center gap-2 text-secondary text-decoration-none"
-          onClick={() => {
-            if (postId) {
-              onCommentsClick?.(postId);
-            }
-          }}
-        >
-          <span className="material-symbols-outlined">chat_bubble</span>
-          <span className="fw-semibold" style={{ fontSize: '14px' }}>{formatCount(comments)}</span>
-        </button>
-      </div>
+          <button
+            className="btn btn-link p-0 d-flex align-items-center gap-2 text-secondary text-decoration-none"
+            onClick={() => {
+              if (postId) {
+                onCommentsClick?.(postId);
+              }
+            }}
+          >
+            <span className="material-symbols-outlined">chat_bubble</span>
+            <span className="fw-semibold" style={{ fontSize: '14px' }}>{formatCount(comments)}</span>
+          </button>
+        </div>
+      )}
     </article>
   );
 }
