@@ -10,6 +10,7 @@ import {
 	extractApiErrorMessage,
 	type Post,
 	type PostsPageResponse,
+	togglePostLike,
 } from '../../services/postService';
 import { populateSenders } from '../../services/userService';
 import { type PaginatedFetchParams, usePaginatedFeed } from '../general/usePaginatedFeed';
@@ -29,19 +30,23 @@ export type FeedProps = {
 	onEditPost?: (postId: string, data: { title: string; content: string; imageFile?: File; removeImage?: boolean; originalImage?: string }) => void;
 };
 
-const mapPostToCard = (post: Post): PostCardProps => ({
-	postId: post._id,
-	postImagePath: post.image || undefined,
-	authorId: post.sender_id,
-	authorName: post.sender?.name || 'Unknown',
-	authorAvatar: toStaticImageUrl(post.sender?.image) || DEFAULT_AVATAR,
-	timeAgo: getTimeAgo(post.createdAt),
-	title: post.title,
-	content: post.content,
-	image: toStaticImageUrl(post.image),
-	likes: 0,
-	comments: post.commentsCount ?? 0,
-});
+const mapPostToCard = (post: Post, currentUserId?: string): PostCardProps => {
+	const likesList = Array.isArray(post.likes) ? post.likes : [];
+
+	return {
+		postId: post._id,
+		authorName: post.sender?.name || 'Unknown',
+		authorAvatar: toStaticImageUrl(post.sender?.image) || DEFAULT_AVATAR,
+		timeAgo: getTimeAgo(post.createdAt),
+		title: post.title,
+		content: post.content,
+		image: toStaticImageUrl(post.image),
+		likes: likesList.length,
+		likedByCurrentUser: !!currentUserId && likesList.includes(currentUserId),
+		comments: post.commentsCount ?? 0,
+		canManage: !!currentUserId && post.sender_id === currentUserId,
+	};
+};
 
 export default function Feed({
 	fetchPage,
@@ -58,13 +63,17 @@ export default function Feed({
 
 	const mapPostsToCards = useCallback(async (pagePosts: Post[]) => {
 		const populated = await populateSenders(pagePosts);
-		return populated.map(mapPostToCard);
-	}, []);
+		return populated.map((post) => mapPostToCard(post, user?.id));
+	}, [user?.id]);
 
 	const getPostsErrorMessage = useCallback(
 		(err: unknown) => extractApiErrorMessage(err, 'Failed to load posts.'),
 		[],
 	);
+
+	const handleToggleLike = useCallback(async (postId: string) => {
+		return togglePostLike(postId);
+	}, []);
 
 	const {
 		items: posts,
@@ -106,7 +115,7 @@ export default function Feed({
 						onEdit={post.postId ? (data) => void onEditPost?.(post.postId as string, data) : undefined}
 						onDelete={post.postId ? () => void onDeletePost?.(post.postId as string, post.postImagePath) : undefined}
 						onCommentsClick={onCommentClick}
-						canManage={post.authorId === user?.id}
+						onToggleLike={handleToggleLike}
 					/>
 				))
 			)}

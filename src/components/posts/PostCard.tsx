@@ -11,6 +11,7 @@ export interface PostCardProps {
   content: string;
   image?: string;
   likes: number;
+  likedByCurrentUser?: boolean;
   comments: number;
   canManage?: boolean;
   onEdit?: (data: { title: string; content: string; imageFile?: File; removeImage?: boolean; originalImage?: string }) => void;
@@ -18,6 +19,7 @@ export interface PostCardProps {
   onCommentsClick?: (postId: string) => void;
   onMore?: () => void;
   onShare?: () => void;
+  onToggleLike?: (postId: string) => Promise<number>;
 }
 
 export default function PostCard({
@@ -29,14 +31,17 @@ export default function PostCard({
   content,
   image,
   likes,
+  likedByCurrentUser = false,
   comments,
   canManage = false,
   onEdit,
   onDelete,
   onCommentsClick,
+  onToggleLike,
 }: PostCardProps) {
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] = useState(likedByCurrentUser);
   const [likeCount, setLikeCount] = useState(likes);
+  const [isTogglingLike, setIsTogglingLike] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editTitle, setEditTitle] = useState(title || '');
@@ -64,9 +69,34 @@ export default function PostCard({
     };
   }, [isMenuOpen]);
 
-  function handleLike() {
-    setLiked((prev) => !prev);
-    setLikeCount((prev) => (liked ? prev - 1 : prev + 1));
+  useEffect(() => {
+    setLiked(likedByCurrentUser);
+  }, [likedByCurrentUser]);
+
+  useEffect(() => {
+    setLikeCount(likes);
+  }, [likes]);
+
+  async function handleLike() {
+    if (!postId || !onToggleLike || isTogglingLike) return;
+
+    const previousLiked = liked;
+    const previousLikeCount = likeCount;
+    const nextLiked = !previousLiked;
+
+    setIsTogglingLike(true);
+    setLiked(nextLiked);
+    setLikeCount((prev) => (nextLiked ? prev + 1 : Math.max(prev - 1, 0)));
+
+    try {
+      const nextCount = await onToggleLike(postId);
+      setLikeCount(nextCount);
+    } catch {
+      setLiked(previousLiked);
+      setLikeCount(previousLikeCount);
+    } finally {
+      setIsTogglingLike(false);
+    }
   }
 
   function handleEdit() {
