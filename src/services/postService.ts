@@ -3,6 +3,7 @@ import api from './api';
 import type { UserProfile } from './userService';
 import type { CursorPageResponse } from '../components/general/usePaginatedFeed';
 
+
 export type CreatePostPayload = {
 	title: string;
 	content: string;
@@ -53,4 +54,29 @@ export const fetchPostsPage = async (
 	}
 	const res = await api.get<PostsPageResponse>(`/api/posts/page?${params.toString()}`);
 	return res.data;
+};
+
+export const fetchPostsPageByUserId = async (
+	limit?: number,
+	cursor?: string | null,
+	queryHash?: string | null,
+	userId?: string,
+): Promise<PostsPageResponse> => {
+	const params = new URLSearchParams();
+	params.set('limit', String(limit));
+	if (queryHash) {
+		params.set('queryHash', queryHash);
+	}
+	if (cursor) {
+		params.set('lastCreatedAt', cursor);
+	}
+
+	const res = await api.get<PostsPageResponse>(`/api/posts/users/${userId}?${params.toString()}`);
+	return res.data;
+};
+
+export const getPostsCountByUserId = async (userId: string): Promise<number> => {
+	const res = await api.get<Post[]>(`/api/posts/users/${userId}`);
+	const data = res.data;
+	return Array.isArray(data) ? data.length : 0;
 };

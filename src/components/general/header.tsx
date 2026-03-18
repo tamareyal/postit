@@ -2,6 +2,7 @@ import Logo from './logo';
 import { useAuth } from '../../context/AuthContext';
 import { useEffect, useState } from 'react';
 import { DEFAULT_AVATAR, getUserAvatarById } from '../../services/userService';
+import { toStaticImageUrl } from '../../services/imageService';
 
 export const PageType = {
   Home: 'home',
@@ -14,18 +15,19 @@ interface HeaderProps {
   page?: PageType;
   onLogout?: () => void;
   onSettings?: () => void;
+  onLogoClick?: () => void;
 }
 
-export default function Header({ page = PageType.Home, onLogout, onSettings }: HeaderProps) {
+export default function Header({ page = PageType.Home, onLogout, onSettings, onLogoClick }: HeaderProps) {
   const { user, logout } = useAuth();
   const [profileAvatar, setProfileAvatar] = useState<string>(DEFAULT_AVATAR);
 
   useEffect(() => {
-    getUserAvatarById(user?.id).then(setProfileAvatar);
+    if (user?.id) getUserAvatarById(user.id).then(setProfileAvatar);
   }, [user?.id]);
 
   const userName = user?.username || 'Unknown User';
-  const userAvatar = profileAvatar;
+  const userAvatar = user?.avatar ?? profileAvatar;
 
   return (
     <header className="sticky-top border-bottom bg-white shadow-sm">
@@ -33,7 +35,19 @@ export default function Header({ page = PageType.Home, onLogout, onSettings }: H
         <div className="d-flex align-items-center justify-content-between py-2" style={{ gap: '1rem' }}>
 
         {/* Logo */}
-        <Logo />
+        {onLogoClick ? (
+          <button
+            type="button"
+            className="border-0 bg-transparent p-0 text-decoration-none d-flex align-items-center"
+            onClick={onLogoClick}
+            title="Home"
+            aria-label="Go to home"
+          >
+            <Logo />
+          </button>
+        ) : (
+          <Logo />
+        )}
 
         {/* AI-Powered Search Bar */}
         {page === PageType.Home && (
@@ -56,7 +70,7 @@ export default function Header({ page = PageType.Home, onLogout, onSettings }: H
         )}
 
         {/* Logout + Right Section */}
-        <nav className="d-flex align-items-center gap-2">
+        <nav className="d-flex align-items-center flex-nowrap gap-3">
           {/* Logout — desktop */}
           <a
             href="#"
@@ -77,33 +91,33 @@ export default function Header({ page = PageType.Home, onLogout, onSettings }: H
             <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>logout</span>
           </a>
 
-          {/* Divider */}
-          <div className="vr align-self-center" style={{ height: '24px' }} />
+          {/* Divider — always visible between logout and avatar/name */}
+          <div
+            className="align-self-center bg-secondary opacity-25 flex-shrink-0"
+            style={{ width: '1px', minHeight: '24px' }}
+            aria-hidden
+          />
 
-          {/* Right section: avatar+name on Home, settings on Profile */}
-          {page === PageType.Profile ? (
-            <button
-              className="btn btn-light d-flex align-items-center justify-content-center rounded-circle p-0"
-              style={{ width: '36px', height: '36px' }}
-              title="Settings"
-              onClick={onSettings}
-            >
-              <span className="material-symbols-outlined text-secondary" style={{ fontSize: '22px' }}>settings</span>
-            </button>
-          ) : (
-            <div className="d-flex align-items-center gap-2">
-              <img
-                src={userAvatar}
-                alt={`${userName} profile picture`}
-                className="rounded-circle object-fit-cover flex-shrink-0"
-                style={{ width: '36px', height: '36px' }}
-              />
-              <span className="d-none d-lg-block fw-semibold text-dark" style={{ fontSize: '14px' }}>
-                {userName}
-              </span>
-            </div>
-          )}
-          </nav>
+          {/* Right section: avatar + name (go to profile / back) or settings when on Profile without onSettings */}
+          <button
+            type="button"
+            className="btn btn-light d-flex align-items-center gap-2 rounded-pill px-2 py-1"
+            style={{ minHeight: '36px' }}
+            onClick={onSettings}
+            title="Go to profile"
+            aria-label="Go to profile"
+          >
+            <img
+              src={toStaticImageUrl(userAvatar) || userAvatar}
+              alt={`${userName} profile picture`}
+              className="rounded-circle object-fit-cover flex-shrink-0"
+              style={{ width: '32px', height: '32px' }}
+            />
+            <span className="d-none d-lg-block fw-semibold text-dark text-nowrap" style={{ fontSize: '14px' }}>
+              {userName}
+            </span>
+          </button>
+        </nav>
 
         </div>
       </div>

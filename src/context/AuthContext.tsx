@@ -14,6 +14,7 @@ type AuthContextType = {
   isAuthChecking: boolean;
   login: (data: { userId: string; username?: string; token: string; refreshToken: string }) => void;
   logout: () => void;
+  updateUser: (updates: Partial<Pick<User, 'username' | 'avatar'>>) => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -31,7 +32,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (token && refreshToken && userId) {
         api
       .get("/api/auth/me")
-        .then((res) => setUser({ id: userId, username: res.data.name, avatar: res.data.image }))
+        .then((res) => {
+          const id = res.data?.id ?? res.data?._id ?? userId;
+          setUser({ id, username: res.data?.name ?? "Unknown", avatar: res.data?.image });
+        })
         .catch((err) => {
             console.error("Error fetching user info:", err);
             setUser({ id: userId, username: "Unknown" });
@@ -50,7 +54,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const res = await api.get("/api/auth/me");
-      setUser({ id: res.data.id, username: res.data.name, avatar: res.data.image });
+      const id = res.data?.id ?? res.data?._id ?? data.userId;
+      setUser({ id, username: res.data?.name ?? data.username ?? "Unknown", avatar: res.data?.image });
     } catch (err) {
       console.error("Failed to fetch user info after login", err);
       setUser({ id: data.userId, username: "Unknown" });
@@ -61,8 +66,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearAuthTokens(); // removes tokens from localStorage
     setUser(null);
   };
- 
-  return <AuthContext.Provider value={{ user, isAuthChecking, login, logout }}>{children}</AuthContext.Provider>;
+
+  const updateUser = (updates: Partial<Pick<User, 'username' | 'avatar'>>) => {
+    setUser((prev) => (prev ? { ...prev, ...updates } : null));
+  };
+
+  return <AuthContext.Provider value={{ user, isAuthChecking, login, logout, updateUser }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
