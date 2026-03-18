@@ -41,7 +41,7 @@ export const getUserAvatarById = async (userId?: string): Promise<string> => {
 
 export const updateUserProfile = async (
 	id: string,
-	updates: { name?: string; image?: string },
+	updates: { name?: string; image?: string | null },
 ): Promise<UserProfile> => {
 	const res = await api.put<UserProfile>(`/api/users/${id}`, updates);
 	userCache.delete(id);

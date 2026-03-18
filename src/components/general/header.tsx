@@ -47,7 +47,8 @@ export default function Header({ page = PageType.Home, onLogout, onSettings, onL
   }, [user?.id]);
 
   const userName = user?.username || 'Unknown User';
-  const userAvatar = user?.avatar ?? profileAvatar;
+  // Treat empty-string as "unset" and fall back.
+  const userAvatar = user?.avatar && user.avatar.trim() ? user.avatar : profileAvatar;
 
   return (
     <header className="sticky-top border-bottom bg-white shadow-sm">

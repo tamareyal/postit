@@ -23,7 +23,8 @@ export default function CreatePost({ onPost, isSubmitting = false, errorMessage 
   }, [user?.id]);
 
   const userName = user?.username || 'Unknown User';
-  const userAvatar = user?.avatar ?? profileAvatar;
+  // Treat empty-string as "unset" and fall back.
+  const userAvatar = user?.avatar && user.avatar.trim() ? user.avatar : profileAvatar;
   const userAvatarUrl = toStaticImageUrl(userAvatar) || userAvatar;
 
   function handleImageSelect(event: ChangeEvent<HTMLInputElement>) {

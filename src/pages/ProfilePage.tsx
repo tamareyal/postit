@@ -1,11 +1,17 @@
 import { useState, useCallback, useEffect, useRef, type FormEvent } from 'react';
+import * as z from 'zod';
 import Header, { PageType } from '../components/general/header';
 import Feed from '../components/posts/Feed';
-import { uploadPostImage } from '../services/imageService';
+import { deleteUploadedImage, uploadPostImage } from '../services/imageService';
 import { useAuth } from '../context/AuthContext';
 import { getUserAvatarById, DEFAULT_AVATAR, updateUserProfile } from '../services/userService';
 import { fetchPostsPageByUserId, getPostsCountByUserId } from '../services/postService';
 import { toStaticImageUrl } from '../services/imageService';
+
+const usernameSchema = z
+  .string()
+  .min(3, 'Username must be at least 3 characters')
+  .max(20, 'Username is too long');
 
 
 interface ProfilePageProps {
@@ -21,10 +27,13 @@ export default function ProfileFeed({ onBack, onLogoClick, onCommentsClick }: Pr
   const [isEditing, setIsEditing] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [removeAvatar, setRemoveAvatar] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [postsCount, setPostsCount] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const originalAvatarRef = useRef<string | null>(null);
 
   useEffect(() => {
     getUserAvatarById(user?.id).then(setProfileAvatar);
@@ -45,11 +54,19 @@ export default function ProfileFeed({ onBack, onLogoClick, onCommentsClick }: Pr
   }, [user?.username]);
 
   const userName = displayName || 'Unknown User';
-  const avatarSrc = avatarPreview ?? profileAvatar;
+  const avatarSrc = removeAvatar ? DEFAULT_AVATAR : (avatarPreview ?? profileAvatar);
   const avatarDisplayUrl =
     typeof avatarSrc === 'string' && avatarSrc.startsWith('blob:')
       ? avatarSrc
       : (toStaticImageUrl(avatarSrc) || avatarSrc);
+
+  const isDeletableUploadedPath = (path?: string | null) => {
+    if (!path) return false;
+    if (path === DEFAULT_AVATAR) return false;
+    if (path.startsWith('http://') || path.startsWith('https://')) return false;
+    if (path.startsWith('blob:')) return false;
+    return true;
+  };
 
   const fetchPage = useCallback(
     async (params: { limit: number; cursor: string | null; queryHash: string | null }) => {
@@ -64,7 +81,16 @@ export default function ProfileFeed({ onBack, onLogoClick, onCommentsClick }: Pr
   const handleSave = async (e: FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    setLocalError(null);
     setError(null);
+
+    const trimmed = displayName.trim();
+    const parsed = usernameSchema.safeParse(trimmed);
+    if (!parsed.success) {
+      setLocalError(parsed.error.issues[0]?.message ?? 'Invalid username');
+      return;
+    }
+
     setIsSaving(true);
     try {
       let imagePath: string | undefined;
@@ -72,18 +98,37 @@ export default function ProfileFeed({ onBack, onLogoClick, onCommentsClick }: Pr
         const uploadRes = await uploadPostImage(avatarFile);
         imagePath = uploadRes.path;
       }
+      const newName = trimmed || user.username;
+      const imagePayload =
+        imagePath ? { image: imagePath } : removeAvatar ? { image: '' } : {};
+
       await updateUserProfile(user.id, {
-        name: displayName.trim() || user.username,
-        ...(imagePath ? { image: imagePath } : {}),
+        name: newName,
+        ...imagePayload,
       });
-      const newName = displayName.trim() || user.username;
+
+      // Delete the previous uploaded avatar if it was replaced or removed.
+      const original = originalAvatarRef.current;
+      const shouldDeleteOriginal = Boolean(original && (imagePath || removeAvatar));
+      if (shouldDeleteOriginal && original && isDeletableUploadedPath(original)) {
+        const filename = original.split('/').pop();
+        if (filename) {
+          try {
+            await deleteUploadedImage(filename);
+          } catch {
+            // Ignore delete errors
+          }
+        }
+      }
       updateUser({
         username: newName,
-        ...(imagePath ? { avatar: imagePath } : {}),
+        ...(imagePath ? { avatar: imagePath } : removeAvatar ? { avatar: undefined } : {}),
       });
       if (imagePath) setProfileAvatar(imagePath);
+      if (removeAvatar) setProfileAvatar(DEFAULT_AVATAR);
       setAvatarFile(null);
       setAvatarPreview(null);
+      setRemoveAvatar(false);
       setIsEditing(false);
     } catch (err) {
       setError('Failed to update profile. Please try again.');
@@ -98,6 +143,8 @@ export default function ProfileFeed({ onBack, onLogoClick, onCommentsClick }: Pr
     setDisplayName(user?.username ?? '');
     setAvatarFile(null);
     setAvatarPreview(null);
+    setRemoveAvatar(false);
+    setLocalError(null);
     setError(null);
   };
 
@@ -106,7 +153,19 @@ export default function ProfileFeed({ onBack, onLogoClick, onCommentsClick }: Pr
     if (!file) return;
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
+    setRemoveAvatar(false);
+    setLocalError(null);
     e.target.value = '';
+  };
+
+  const startEditing = () => {
+    originalAvatarRef.current = (user?.avatar && user.avatar.trim() ? user.avatar : profileAvatar) || null;
+    setIsEditing(true);
+    setError(null);
+    setLocalError(null);
+    setAvatarFile(null);
+    setAvatarPreview(null);
+    setRemoveAvatar(false);
   };
 
   return (
@@ -150,6 +209,24 @@ export default function ProfileFeed({ onBack, onLogoClick, onCommentsClick }: Pr
                         photo_camera
                       </span>
                     </button>
+                    {(avatarPreview || (profileAvatar && profileAvatar !== DEFAULT_AVATAR && !removeAvatar)) && (
+                      <button
+                        type="button"
+                        className="btn btn-light btn-sm position-absolute bottom-0 start-0 rounded-circle border border-white border-3 d-flex align-items-center justify-content-center"
+                        style={{ width: '36px', height: '36px' }}
+                        title="Remove profile photo"
+                        aria-label="Remove profile photo"
+                        onClick={() => {
+                          setAvatarFile(null);
+                          setAvatarPreview(null);
+                          setRemoveAvatar(true);
+                        }}
+                      >
+                        <span className="material-symbols-outlined text-danger" style={{ fontSize: '20px' }}>
+                          delete
+                        </span>
+                      </button>
+                    )}
                   </>
                 )}
               </div>
@@ -171,7 +248,10 @@ export default function ProfileFeed({ onBack, onLogoClick, onCommentsClick }: Pr
                       className="form-control fw-bold"
                       style={{ maxWidth: '280px', fontSize: '1.25rem' }}
                       value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
+                      onChange={(e) => {
+                        setDisplayName(e.target.value);
+                        if (localError) setLocalError(null);
+                      }}
                       placeholder="Your name"
                     />
                     <div className="d-flex align-items-center gap-1">
@@ -211,7 +291,7 @@ export default function ProfileFeed({ onBack, onLogoClick, onCommentsClick }: Pr
                       style={{ width: '32px', height: '32px' }}
                       title="Edit profile"
                       aria-label="Edit profile"
-                      onClick={() => setIsEditing(true)}
+                      onClick={startEditing}
                     >
                       <span className="material-symbols-outlined text-secondary" style={{ fontSize: '20px' }}>
                         edit
@@ -224,9 +304,9 @@ export default function ProfileFeed({ onBack, onLogoClick, onCommentsClick }: Pr
                 )}
               </div>
 
-              {error && (
+              {(localError || error) && (
                 <div className="alert alert-danger py-2 px-3 mb-2 small" role="alert">
-                  {error}
+                  {localError || error}
                 </div>
               )}
 
