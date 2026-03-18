@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (token && refreshToken && userId) {
         api
       .get("/api/auth/me")
-        .then((res) => setUser({ id: userId, username: res.data.name, avatar: res.data.image }))
+        .then((res) => setUser({ id: res.data._id || res.data.id || userId, username: res.data.name, avatar: res.data.image }))
         .catch((err) => {
             console.error("Error fetching user info:", err);
             setUser({ id: userId, username: "Unknown" });

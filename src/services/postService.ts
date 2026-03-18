@@ -32,6 +32,11 @@ export const createPost = async (payload: CreatePostPayload): Promise<Post> => {
 	return res.data;
 };
 
+export const updatePost = async (postId: string, payload: { title: string; content: string; image?: string }): Promise<Post> => {
+	const res = await api.put<Post>(`/api/posts/${postId}`, payload);
+	return res.data;
+};
+
 export const fetchPosts = async (): Promise<Post[]> => {
 	const res = await api.get<Post[]>('/api/posts');
 	return res.data;
@@ -71,6 +76,10 @@ export const togglePostLike = async (postId: string): Promise<number> => {
 	if ('likeCount' in payload) return payload.likeCount;
 
 	throw new Error('Unexpected like response format');
+};
+
+export const deletePost = async (postId: string): Promise<void> => {
+	await api.delete(`/api/posts/${postId}`);
 };
 
 export const searchPosts = async (

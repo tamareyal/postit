@@ -26,6 +26,8 @@ export type FeedProps = {
 	refreshTrigger?: number;
 	emptyStateProps?: EmptyFeedProps;
 	onCommentClick?: (postId: string) => void;
+	onDeletePost?: (postId: string, imagePath?: string) => void;
+	onEditPost?: (postId: string, data: { title: string; content: string; imageFile?: File; removeImage?: boolean; originalImage?: string }) => void;
 };
 
 const mapPostToCard = (post: Post, currentUserId?: string): PostCardProps => {
@@ -42,6 +44,7 @@ const mapPostToCard = (post: Post, currentUserId?: string): PostCardProps => {
 		likes: likesList.length,
 		likedByCurrentUser: !!currentUserId && likesList.includes(currentUserId),
 		comments: post.commentsCount ?? 0,
+		canManage: !!currentUserId && post.sender_id === currentUserId,
 	};
 };
 
@@ -51,6 +54,8 @@ export default function Feed({
 	refreshTrigger = 0,
 	emptyStateProps,
 	onCommentClick,
+	onDeletePost,
+	onEditPost,
 }: FeedProps) {
 	const { user } = useAuth();
 	
@@ -104,11 +109,14 @@ export default function Feed({
 				<EmptyFeed {...emptyStateProps} />
 			) : (
 				posts.map((post, i) => (
-					<PostCard 
-						key={post.postId || i} 
-						{...post} 
+					<PostCard
+						key={post.postId || i}
+						{...post}
+						onEdit={post.postId ? (data) => void onEditPost?.(post.postId as string, data) : undefined}
+						onDelete={post.postId ? () => void onDeletePost?.(post.postId as string, post.postImagePath) : undefined}
 						onCommentsClick={onCommentClick}
-						onToggleLike={handleToggleLike} />
+						onToggleLike={handleToggleLike}
+					/>
 				))
 			)}
 
