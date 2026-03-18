@@ -26,6 +26,7 @@ export type FeedProps = {
 	emptyStateProps?: EmptyFeedProps;
 	onCommentClick?: (postId: string) => void;
 	onDeletePost?: (postId: string, imagePath?: string) => void;
+	onEditPost?: (postId: string, data: { title: string; content: string; imageFile?: File; removeImage?: boolean; originalImage?: string }) => void;
 };
 
 const mapPostToCard = (post: Post): PostCardProps => ({
@@ -49,6 +50,7 @@ export default function Feed({
 	emptyStateProps,
 	onCommentClick,
 	onDeletePost,
+	onEditPost,
 }: FeedProps) {
 	const { user } = useAuth();
 	
@@ -101,6 +103,7 @@ export default function Feed({
 					<PostCard
 						key={post.postId || i}
 						{...post}
+						onEdit={post.postId ? (data) => void onEditPost?.(post.postId as string, data) : undefined}
 						onDelete={post.postId ? () => void onDeletePost?.(post.postId as string, post.postImagePath) : undefined}
 						onCommentsClick={onCommentClick}
 						canManage={post.authorId === user?.id}

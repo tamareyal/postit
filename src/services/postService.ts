@@ -31,6 +31,11 @@ export const createPost = async (payload: CreatePostPayload): Promise<Post> => {
 	return res.data;
 };
 
+export const updatePost = async (postId: string, payload: { title: string; content: string; image?: string }): Promise<Post> => {
+	const res = await api.put<Post>(`/api/posts/${postId}`, payload);
+	return res.data;
+};
+
 export const fetchPosts = async (): Promise<Post[]> => {
 	const res = await api.get<Post[]>('/api/posts');
 	return res.data;
