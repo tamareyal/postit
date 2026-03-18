@@ -61,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     clearAuthTokens(); // removes tokens from localStorage
     setUser(null);
+    window.location.replace("/");
   };
 
   const updateUser = (updates: Partial<Pick<User, 'username' | 'avatar'>>) => {
