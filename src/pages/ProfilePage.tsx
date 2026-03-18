@@ -32,6 +32,7 @@ export default function ProfileFeed({ onBack, onLogoClick, onCommentsClick }: Pr
   const [localError, setLocalError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [postsCount, setPostsCount] = useState<number | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const originalAvatarRef = useRef<string | null>(null);
 
@@ -126,6 +127,7 @@ export default function ProfileFeed({ onBack, onLogoClick, onCommentsClick }: Pr
       });
       if (imagePath) setProfileAvatar(imagePath);
       if (removeAvatar) setProfileAvatar(DEFAULT_AVATAR);
+      setRefreshTrigger((prev) => prev + 1);
       setAvatarFile(null);
       setAvatarPreview(null);
       setRemoveAvatar(false);
@@ -327,6 +329,7 @@ export default function ProfileFeed({ onBack, onLogoClick, onCommentsClick }: Pr
         <div className="mt-5">
           <Feed
             fetchPage={fetchPage}
+            refreshTrigger={refreshTrigger}
             onCommentClick={onCommentsClick}
           />
         </div>
