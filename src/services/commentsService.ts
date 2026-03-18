@@ -29,6 +29,7 @@ export const fetchCommentsPageByPostId = async (
 	limit: number,
 	cursor?: string | null,
 	queryHash?: string | null,
+	signal?: AbortSignal
 ): Promise<CommentsPageResponse> => {
 	const params = new URLSearchParams();
 	params.set('limit', String(limit));
@@ -39,7 +40,7 @@ export const fetchCommentsPageByPostId = async (
 		params.set('lastCreatedAt', cursor);
 	}
 
-	const res = await api.get<CommentsPageResponse>(`/api/comments/posts/${postId}?${params.toString()}`);
+	const res = await api.get<CommentsPageResponse>(`/api/comments/posts/${postId}?${params.toString()}`, { signal });
 	return res.data;
 };
 

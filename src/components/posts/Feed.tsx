@@ -4,6 +4,7 @@ import type { PostCardProps } from './PostCard';
 import EmptyFeed, { type EmptyFeedProps } from '../general/EmptyFeed';
 import BottomLoadingIndicator from '../general/BottomLoadingIndicator';
 import { toStaticImageUrl } from '../../services/imageService';
+import { useAuth } from '../../context/AuthContext';
 import { getTimeAgo } from '../../services/time';
 import {
 	extractApiErrorMessage,
@@ -24,24 +25,21 @@ export type FeedProps = {
 	refreshTrigger?: number;
 	emptyStateProps?: EmptyFeedProps;
 	onCommentClick?: (postId: string) => void;
+	onDeletePost?: (postId: string, imagePath?: string) => void;
 };
 
-
-
-
-
-
-
 const mapPostToCard = (post: Post): PostCardProps => ({
-    postId: post._id,
-    authorName: post.sender?.name || 'Unknown',
-    authorAvatar: toStaticImageUrl(post.sender?.image) || DEFAULT_AVATAR,
-    timeAgo: getTimeAgo(post.createdAt),
-    title: post.title,
-    content: post.content,
-    image: toStaticImageUrl(post.image),
-    likes: 0,
-    comments: post.commentsCount ?? 0,
+	postId: post._id,
+	postImagePath: post.image || undefined,
+	authorId: post.sender_id,
+	authorName: post.sender?.name || 'Unknown',
+	authorAvatar: toStaticImageUrl(post.sender?.image) || DEFAULT_AVATAR,
+	timeAgo: getTimeAgo(post.createdAt),
+	title: post.title,
+	content: post.content,
+	image: toStaticImageUrl(post.image),
+	likes: 0,
+	comments: post.commentsCount ?? 0,
 });
 
 export default function Feed({
@@ -50,7 +48,10 @@ export default function Feed({
 	refreshTrigger = 0,
 	emptyStateProps,
 	onCommentClick,
+	onDeletePost,
 }: FeedProps) {
+	const { user } = useAuth();
+	
 	const getPostId = useCallback((post: Post) => post._id, []);
 
 	const mapPostsToCards = useCallback(async (pagePosts: Post[]) => {
@@ -97,7 +98,13 @@ export default function Feed({
 				<EmptyFeed {...emptyStateProps} />
 			) : (
 				posts.map((post, i) => (
-					<PostCard key={post.postId || i} {...post} onCommentsClick={onCommentClick} />
+					<PostCard
+						key={post.postId || i}
+						{...post}
+						onDelete={post.postId ? () => void onDeletePost?.(post.postId as string, post.postImagePath) : undefined}
+						onCommentsClick={onCommentClick}
+						canManage={post.authorId === user?.id}
+					/>
 				))
 			)}
 

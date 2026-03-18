@@ -16,11 +16,31 @@ interface HeaderProps {
   onLogout?: () => void;
   onSettings?: () => void;
   onLogoClick?: () => void;
+  onSearch?: (query: string) => void;
+  searchLoading?: boolean;
 }
 
-export default function Header({ page = PageType.Home, onLogout, onSettings, onLogoClick }: HeaderProps) {
+export default function Header({ page = PageType.Home, onLogout, onSettings, onLogoClick, onSearch }: HeaderProps) {
+
   const { user, logout } = useAuth();
   const [profileAvatar, setProfileAvatar] = useState<string>(DEFAULT_AVATAR);
+  const [searchValue, setSearchValue] = useState("");
+  
+
+  const handleSearchTrigger = (val: string) => {
+    onSearch?.(val.trim());
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearchTrigger(searchValue);
+    }
+  };
+
+  const handleClear = () => {
+    setSearchValue("");
+    handleSearchTrigger(""); // Trigger empty search to return to main feed
+  };
 
   useEffect(() => {
     if (user?.id) getUserAvatarById(user.id).then(setProfileAvatar);
@@ -64,7 +84,21 @@ export default function Header({ page = PageType.Home, onLogout, onSettings, onL
               className="form-control rounded-pill bg-light border-0"
               placeholder="Ask AI to find posts, people or trends..."
               style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
+              value={searchValue}
+              onChange={e => setSearchValue(e.target.value)}
+              onKeyDown={handleKeyDown}
             />
+
+            {/* Clear Button (X) */}
+            {searchValue && (
+              <button
+                onClick={handleClear}
+                className="btn btn-link position-absolute top-50 translate-middle-y p-0 d-flex align-items-center text-secondary border-0"
+                style={{ right: '12px', zIndex: 2, textDecoration: 'none' }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>close</span>
+              </button>
+            )}
           </div>
         </div>
         )}

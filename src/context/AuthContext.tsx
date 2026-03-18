@@ -32,10 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (token && refreshToken && userId) {
         api
       .get("/api/auth/me")
-        .then((res) => {
-          const id = res.data?.id ?? res.data?._id ?? userId;
-          setUser({ id, username: res.data?.name ?? "Unknown", avatar: res.data?.image });
-        })
+        .then((res) => setUser({ id: res.data._id || res.data.id || userId, username: res.data.name, avatar: res.data.image }))
         .catch((err) => {
             console.error("Error fetching user info:", err);
             setUser({ id: userId, username: "Unknown" });
@@ -54,8 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const res = await api.get("/api/auth/me");
-      const id = res.data?.id ?? res.data?._id ?? data.userId;
-      setUser({ id, username: res.data?.name ?? data.username ?? "Unknown", avatar: res.data?.image });
+      setUser({ id: res.data._id || res.data.id, username: res.data.name, avatar: res.data.image });
     } catch (err) {
       console.error("Failed to fetch user info after login", err);
       setUser({ id: data.userId, username: "Unknown" });

@@ -6,8 +6,10 @@ import CommentsPage from './CommentsPage';
 import ProfilePage from './ProfilePage';
 import {
   createPost,
+  deletePost,
   extractApiErrorMessage,
   fetchPostsPage,
+  searchPosts
 } from '../services/postService';
 import { deleteUploadedImage, uploadPostImage } from '../services/imageService';
 
@@ -35,7 +37,9 @@ export default function HomeFeed() {
   const initial = getInitialRoute();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
+  const [feedError, setFeedError] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+<<<<<<< HEAD
   const [selectedCommentsPostId, setSelectedCommentsPostId] = useState<string | null>(
     initial.view === 'comments' ? initial.commentsPostId : null
   );
@@ -52,6 +56,10 @@ export default function HomeFeed() {
     setShowProfile(true);
     window.history.pushState({}, '', PROFILE_PATH);
   }, []);
+=======
+  const [activeSearch, setActiveSearch] = useState<string>("");
+  const [selectedCommentsPostId, setSelectedCommentsPostId] = useState<string | null>(getCommentsPostIdFromUrl);
+>>>>>>> 16463c3e86506c7ade58d6957cbe2e92fbf96ad7
 
   useEffect(() => {
     const handlePopState = () => {
@@ -65,8 +73,17 @@ export default function HomeFeed() {
   }, []);
 
   const fetchPage = useCallback(async (
-    params: { limit: number; cursor: string | null; queryHash: string | null }
-  ) => fetchPostsPage(params.limit, params.cursor, params.queryHash), []);
+    params: { limit: number; cursor: string | null; queryHash: string | null; signal?: AbortSignal }
+  ) => {
+    if (activeSearch.trim()) {
+      return searchPosts(activeSearch, params.limit, params.cursor, params.queryHash, params.signal);
+    }
+    return fetchPostsPage(params.limit, params.cursor, params.queryHash, params.signal);
+  }, [activeSearch]);
+
+  const handleSearch = (query: string) => {
+    setActiveSearch(query);
+  };
 
   const handleOpenComments = useCallback((postId: string) => {
     const params = new URLSearchParams(window.location.search);
@@ -114,6 +131,28 @@ export default function HomeFeed() {
     }
   };
 
+  const handleDeletePost = useCallback(async (postId: string, imagePath?: string) => {
+    setFeedError(null);
+
+    try {
+      await deletePost(postId);
+
+      const imageFilename = imagePath?.split('/').pop();
+      if (imageFilename) {
+        try {
+          await deleteUploadedImage(imageFilename);
+        } catch {
+          // Silently fail on image deletion
+        }
+      }
+
+      setRefreshTrigger(prev => prev + 1);
+    } catch (err) {
+      console.error('Error deleting post:', err);
+      setFeedError(extractApiErrorMessage(err, 'Failed to delete post.'));
+    }
+  }, []);
+
   if (selectedCommentsPostId) {
     return (
       <CommentsPage
@@ -138,20 +177,38 @@ export default function HomeFeed() {
     <div className="min-vh-100 bg-light">
       <Header
         page={PageType.Home}
+<<<<<<< HEAD
         onSettings={goToProfile}
         onLogoClick={goHome}
+=======
+        onSearch={handleSearch}
+>>>>>>> 16463c3e86506c7ade58d6957cbe2e92fbf96ad7
       />
       <main className="container py-4" style={{ maxWidth: '640px' }}>
-        <CreatePost
-          onPost={handleNewPost}
-          isSubmitting={isSubmitting}
-          errorMessage={postError}
-        />
+        {!activeSearch && (
+          <CreatePost
+            onPost={handleNewPost}
+            isSubmitting={isSubmitting}
+            errorMessage={postError}
+          />
+        )}
+        {feedError && (
+          <div className="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 mb-3" role="alert">
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>error</span>
+            <span className="small fw-semibold">{feedError}</span>
+          </div>
+        )}
         <Feed
-          fetchPage={fetchPage}
-          refreshTrigger={refreshTrigger}
-          onCommentClick={handleOpenComments}
-        />
+         key={activeSearch}
+         fetchPage={fetchPage}
+         refreshTrigger={refreshTrigger}
+         emptyStateProps={{
+            title: activeSearch ? "No matches found" : "There is no content to display",
+            description: activeSearch ? "Try a different search query." : "Upload or wait for other users to post content."
+          }}
+         onCommentClick={handleOpenComments}
+         onDeletePost={handleDeletePost}
+         />
       </main>
     </div>
   );
