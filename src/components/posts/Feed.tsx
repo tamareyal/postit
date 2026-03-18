@@ -28,6 +28,7 @@ export type FeedProps = {
 	onCommentClick?: (postId: string) => void;
 	onDeletePost?: (postId: string, imagePath?: string) => void;
 	onEditPost?: (postId: string, data: { title: string; content: string; imageFile?: File; removeImage?: boolean; originalImage?: string }) => void;
+	onToggleLike?: (postId: string) => Promise<number>;
 };
 
 const mapPostToCard = (post: Post, currentUserId?: string): PostCardProps => {
@@ -56,6 +57,7 @@ export default function Feed({
 	onCommentClick,
 	onDeletePost,
 	onEditPost,
+	onToggleLike,
 }: FeedProps) {
 	const { user } = useAuth();
 	
@@ -72,8 +74,8 @@ export default function Feed({
 	);
 
 	const handleToggleLike = useCallback(async (postId: string) => {
-		return togglePostLike(postId);
-	}, []);
+		return onToggleLike ? await onToggleLike(postId) : await togglePostLike(postId);
+	}, [onToggleLike]);
 
 	const {
 		items: posts,

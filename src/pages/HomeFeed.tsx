@@ -10,6 +10,7 @@ import {
   extractApiErrorMessage,
   fetchPostsPage,
   searchPosts,
+  togglePostLike,
   updatePost,
 } from '../services/postService';
 import { deleteUploadedImage, uploadPostImage } from '../services/imageService';
@@ -50,12 +51,14 @@ export default function HomeFeed() {
   const goHome = useCallback(() => {
     setShowProfile(false);
     setSelectedCommentsPostId(null);
+    setActiveSearch("");
     window.history.pushState({}, '', '/');
   }, []);
 
   const goToProfile = useCallback(() => {
     setSelectedCommentsPostId(null);
     setShowProfile(true);
+    setActiveSearch("");
     window.history.pushState({}, '', PROFILE_PATH);
   }, []);
 
@@ -84,6 +87,7 @@ export default function HomeFeed() {
   };
 
   const handleOpenComments = useCallback((postId: string) => {
+    setActiveSearch("");
     const params = new URLSearchParams(window.location.search);
     params.set(COMMENTS_POST_ID_PARAM, postId);
     const path = window.location.pathname;
@@ -217,6 +221,10 @@ export default function HomeFeed() {
         onBack={goHome}
         onLogoClick={goHome}
         onCommentsClick={handleOpenComments}
+        onDeletePost={handleDeletePost}
+        onEditPost={handleEditPost}
+        onToggleLike={togglePostLike}
+        refreshTrigger={refreshTrigger}
       />
     );
   }
@@ -254,6 +262,7 @@ export default function HomeFeed() {
          onCommentClick={handleOpenComments}
          onDeletePost={handleDeletePost}
          onEditPost={handleEditPost}
+         onToggleLike={togglePostLike}
          />
       </main>
     </div>
